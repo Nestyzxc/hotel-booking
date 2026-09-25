@@ -1,1 +1,756 @@
-test
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <!-- ================================================================
+       CONFIG — แก้ 3 ค่านี้ก่อนอัปโหลด (ทั้งหมดเป็นค่าสาธารณะ ไม่มีค่าลับ)
+       ห้ามใส่ Channel Access Token / Channel Secret / API key ในไฟล์นี้
+       ================================================================ -->
+  <script>
+    const N8N_WEBHOOK_URL  = 'https://gently-condition-lumpiness.ngrok-free.dev/webhook/booking';
+    const LIFF_ID          = '2011748537-D4uPXJ9B';   // LINE Login channel > แท็บ LIFF > LIFF ID
+    const LINE_OA_BASIC_ID = '@416hldvs';    // OA Manager > Basic ID เช่น @123abcde
+  </script>
+
+  <title>Golden Horizon · จองห้องพัก</title>
+  <meta name="theme-color" content="#16161A">
+
+  <!-- Fonts: รองรับภาษาไทย -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600&family=Noto+Serif+Thai:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS v4 (Play CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- LINE LIFF SDK v2 -->
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      --color-gold: #D4AF6A;
+      --color-gold-soft: #F3D98B;
+      --color-gold-deep: #B08D3E;
+      --color-ink: #16161A;
+      --color-ink-2: #1F1F25;
+      --color-ivory: #FAF7F0;
+      --font-sans: "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-serif: "Noto Serif Thai", Georgia, serif;
+    }
+  </style>
+
+  <style>
+    html { -webkit-text-size-adjust: 100%; }
+    body { background: radial-gradient(120% 90% at 80% 0%, #2a2620 0%, #16161A 55%) fixed, #16161A; }
+
+    /* Glassmorphism booking card */
+    .glass {
+      position: relative;
+      background: linear-gradient(145deg, rgba(255,255,255,.12), rgba(255,255,255,.04));
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 40px 90px -30px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,255,255,.14);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+      backdrop-filter: blur(18px) saturate(140%);
+    }
+    .glass::before { /* เส้นทองบาง ๆ ขอบบนการ์ด */
+      content: ""; position: absolute; inset: 0 12% auto 12%; height: 1px;
+      background: linear-gradient(90deg, transparent, #F3D98B, transparent); opacity: .8;
+    }
+    @media (pointer: coarse) { /* มือถือ: blur เบาลง ประหยัด GPU */
+      .glass { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+    }
+    /* การ์ดลอย: เฉพาะจอที่มีเมาส์ และผู้ใช้ไม่ได้ปิด animation */
+    @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+      .float { animation: float 7s ease-in-out infinite; }
+      @keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
+    }
+
+    /* Form fields */
+    .label { display:block; font-size:.8rem; letter-spacing:.02em; color: rgba(250,247,240,.72); margin-bottom:.4rem; }
+    .field {
+      width:100%; font-size:16px; /* 16px กัน iOS zoom */
+      background: rgba(10,10,14,.45); color:#FAF7F0;
+      border:1px solid rgba(255,255,255,.14); border-radius:14px;
+      padding:.8rem 1rem; transition: border-color .15s, box-shadow .15s;
+    }
+    .field::placeholder { color: rgba(250,247,240,.35); }
+    .field:focus { outline:none; border-color:#D4AF6A; box-shadow:0 0 0 3px rgba(212,175,106,.25); }
+    .field[aria-invalid="true"] { border-color:#F28B82; box-shadow:0 0 0 3px rgba(242,139,130,.18); }
+    .field:disabled { opacity:.6; }
+    input[type="date"].field { color-scheme: dark; min-height: 3.05rem; padding-inline: .75rem; }
+    .field-error { color:#F6A59E; font-size:.78rem; margin-top:.35rem; min-height:1em; }
+
+    /* Room type radio cards */
+    .room-card {
+      display:flex; flex-direction:column; gap:.15rem; height:100%;
+      border:1px solid rgba(255,255,255,.14); border-radius:14px;
+      padding:.7rem .75rem; background: rgba(10,10,14,.35);
+      cursor:pointer; transition: border-color .15s, background .15s;
+    }
+    .room input:checked + .room-card { border-color:#D4AF6A; background: rgba(212,175,106,.14); }
+    .room input:focus-visible + .room-card { box-shadow:0 0 0 3px rgba(212,175,106,.35); }
+    .room-group[aria-invalid="true"] .room-card { border-color: rgba(242,139,130,.7); }
+
+    /* Buttons */
+    .btn-gold {
+      background: linear-gradient(135deg, #F3D98B 0%, #D4AF6A 45%, #B08D3E 100%);
+      color:#16161A; font-weight:600; border-radius:14px;
+      box-shadow: 0 12px 30px -10px rgba(212,175,106,.55);
+      transition: filter .15s, transform .1s, opacity .15s;
+    }
+    .btn-gold:hover { filter: brightness(1.05); }
+    .btn-gold:active { transform: translateY(1px); }
+    .btn-gold:disabled { opacity:.6; cursor:not-allowed; }
+    .btn-ghost { border:1px solid rgba(255,255,255,.2); border-radius:14px; color:#FAF7F0; }
+    .btn-ghost:hover { background: rgba(255,255,255,.06); }
+
+    .spinner {
+      width:1.1rem; height:1.1rem; border-radius:999px; flex:none;
+      border:2px solid currentColor; border-right-color: transparent;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Dialog */
+    /* margin:auto = จัดกึ่งกลาง (Tailwind reset ตั้ง margin:0 ทำให้ dialog ไปชิดมุมซ้ายบน) */
+    dialog { margin:auto; border:none; padding:0; background:transparent; color:inherit; max-width: min(92vw, 26rem); width:100%; }
+    dialog::backdrop { background: rgba(8,8,10,.65); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+
+    #bg { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+      .spinner { animation-duration: .7s !important; }
+    }
+  </style>
+</head>
+
+<body class="min-h-dvh text-ivory font-sans antialiased">
+  <!-- Three.js golden particles -->
+  <canvas id="bg" aria-hidden="true"></canvas>
+  <div class="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(80%_60%_at_50%_120%,rgba(0,0,0,.55),transparent)]"></div>
+
+  <main class="relative z-10 mx-auto grid min-h-dvh max-w-6xl items-center gap-8 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-14">
+
+    <!-- ===== Hero ===== -->
+    <section class="pt-4 lg:pt-0">
+      <p class="mb-3 text-xs font-medium tracking-[.35em] text-gold">GOLDEN HORIZON HOTEL</p>
+      <h1 class="font-serif text-[2rem] leading-tight font-semibold sm:text-5xl lg:text-6xl">
+        พักผ่อนเหนือระดับ<br><span class="text-gold">ดูแลคุณทุกช่วงเวลา</span>
+      </h1>
+      <p class="mt-4 max-w-lg text-[15px] leading-relaxed text-ivory/70 sm:text-base">
+        จองตรงกับโรงแรม รับใบยืนยันทาง LINE ทันที และบอกความต้องการพิเศษกับเราได้ตลอดการเข้าพัก
+      </p>
+      <ul class="mt-6 hidden space-y-3 text-sm text-ivory/80 sm:block">
+        <li class="flex items-center gap-3"><span class="grid h-8 w-8 place-items-center rounded-full border border-gold/40 text-gold">✓</span>ใบยืนยันการจองส่งเข้า LINE อัตโนมัติ</li>
+        <li class="flex items-center gap-3"><span class="grid h-8 w-8 place-items-center rounded-full border border-gold/40 text-gold">✓</span>แจ้งคำขอระหว่างเข้าพักผ่านแชทได้ตลอด 24 ชม.</li>
+        <li class="flex items-center gap-3"><span class="grid h-8 w-8 place-items-center rounded-full border border-gold/40 text-gold">✓</span>จองตรง ไม่ผ่านตัวกลาง</li>
+      </ul>
+    </section>
+
+    <!-- ===== Booking Card ===== -->
+    <section class="glass float rounded-3xl p-5 sm:p-7" aria-labelledby="card-title">
+      <div class="mb-5 flex items-center justify-between gap-3">
+        <h2 id="card-title" class="font-serif text-xl font-semibold sm:text-2xl">จองห้องพัก</h2>
+        <span id="preview-badge" hidden class="rounded-full border border-gold/50 px-2.5 py-0.5 text-[11px] text-gold">PREVIEW</span>
+      </div>
+
+      <!-- State: loading -->
+      <div id="state-loading" class="flex items-center gap-3 py-10 text-ivory/70" role="status">
+        <span class="spinner text-gold"></span> กำลังเชื่อมต่อ LINE…
+      </div>
+
+      <!-- State: opened outside LINE (ยังไม่ได้ล็อกอิน) -->
+      <div id="state-outside" hidden class="py-4 text-center">
+        <div class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[#06C755] text-2xl font-bold text-white">L</div>
+        <p class="font-medium">จองผ่านบัญชี LINE ของคุณ</p>
+        <p class="mt-1 text-sm text-ivory/60">ระบบใช้บัญชี LINE เพื่อส่งใบยืนยันการจองและดูแลคุณระหว่างเข้าพัก</p>
+        <a id="open-in-line" href="#" class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#06C755] px-5 py-3.5 font-semibold text-white hover:brightness-105">เปิดใน LINE</a>
+        <button id="login-web" type="button" class="btn-ghost mt-3 w-full px-5 py-3 text-sm">เข้าสู่ระบบด้วย LINE แล้วจองบนเว็บนี้</button>
+        <button id="copy-liff" type="button" class="mt-4 text-xs text-ivory/60 underline underline-offset-4">คัดลอกลิงก์ไปเปิดบนมือถือ</button>
+      </div>
+
+      <!-- State: error -->
+      <div id="state-error" hidden class="py-6 text-center">
+        <p class="font-medium text-[#F6A59E]">เกิดข้อผิดพลาด</p>
+        <p id="state-error-msg" class="mt-2 text-sm text-ivory/70"></p>
+        <button type="button" onclick="location.reload()" class="btn-ghost mt-5 w-full px-5 py-3 text-sm">ลองใหม่</button>
+      </div>
+
+      <!-- State: form -->
+      <form id="booking-form" hidden novalidate class="space-y-4">
+        <!-- LINE profile chip -->
+        <div class="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
+          <img id="profile-pic" alt="" class="h-9 w-9 rounded-full bg-white/10 object-cover" hidden>
+          <div id="profile-fallback" class="grid h-9 w-9 place-items-center rounded-full bg-gold/20 text-gold">★</div>
+          <div class="min-w-0 text-sm">
+            <p class="text-ivory/55 text-xs">จองผ่านบัญชี LINE</p>
+            <p id="profile-name" class="truncate font-medium">—</p>
+          </div>
+        </div>
+
+        <!-- Not-a-friend warning -->
+        <div id="friend-warn" hidden class="rounded-2xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm">
+          <p class="font-medium text-gold-soft">ยังไม่ได้เพิ่มโรงแรมเป็นเพื่อน</p>
+          <p class="mt-1 text-ivory/70">ใบยืนยันและการดูแลระหว่างเข้าพักส่งทาง LINE ได้เฉพาะเพื่อนเท่านั้น</p>
+          <a id="add-friend" href="#" hidden class="mt-2 inline-block font-medium text-gold underline underline-offset-4">เพิ่มเพื่อนตอนนี้</a>
+        </div>
+
+        <div>
+          <label class="label" for="full_name">ชื่อ-นามสกุล</label>
+          <input class="field" id="full_name" name="full_name" type="text" autocomplete="name" maxlength="100" placeholder="เช่น สมชาย ใจดี" aria-describedby="err-full_name">
+          <p class="field-error" id="err-full_name" aria-live="polite"></p>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="label" for="phone">เบอร์มือถือ</label>
+            <input class="field" id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="08xxxxxxxx" aria-describedby="err-phone">
+            <p class="field-error" id="err-phone" aria-live="polite"></p>
+          </div>
+          <div>
+            <label class="label" for="email">อีเมล</label>
+            <input class="field" id="email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="120" placeholder="name@email.com" aria-describedby="err-email">
+            <p class="field-error" id="err-email" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label" for="check_in">เช็กอิน</label>
+            <input class="field" id="check_in" name="check_in" type="date" aria-describedby="err-check_in">
+            <p class="field-error" id="err-check_in" aria-live="polite"></p>
+          </div>
+          <div>
+            <label class="label" for="check_out">เช็กเอาต์</label>
+            <input class="field" id="check_out" name="check_out" type="date" aria-describedby="err-check_out">
+            <p class="field-error" id="err-check_out" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <fieldset>
+          <legend class="label">ประเภทห้อง</legend>
+          <div id="room-group" class="room-group grid grid-cols-3 gap-2" aria-describedby="err-room_type">
+            <label class="room">
+              <input class="sr-only" type="radio" name="room_type" value="Superior">
+              <span class="room-card"><span class="text-sm font-semibold">Superior</span><span class="text-[11px] leading-snug text-ivory/55">28 ตร.ม.<br>วิวเมือง</span></span>
+            </label>
+            <label class="room">
+              <input class="sr-only" type="radio" name="room_type" value="Deluxe" checked>
+              <span class="room-card"><span class="text-sm font-semibold">Deluxe</span><span class="text-[11px] leading-snug text-ivory/55">36 ตร.ม.<br>ระเบียงส่วนตัว</span></span>
+            </label>
+            <label class="room">
+              <input class="sr-only" type="radio" name="room_type" value="Suite">
+              <span class="room-card"><span class="text-sm font-semibold">Suite</span><span class="text-[11px] leading-snug text-ivory/55">60 ตร.ม.<br>ห้องนั่งเล่นแยก</span></span>
+            </label>
+          </div>
+          <p class="field-error" id="err-room_type" aria-live="polite"></p>
+        </fieldset>
+
+        <p id="stay-summary" class="rounded-xl bg-black/20 px-4 py-2.5 text-sm text-ivory/75" hidden></p>
+
+        <div>
+          <label class="flex items-start gap-3 text-sm text-ivory/75">
+            <input id="consent" name="consent" type="checkbox" class="mt-1 h-4 w-4 accent-[#D4AF6A]" aria-describedby="err-consent">
+            <span>ยินยอมให้โรงแรมใช้ข้อมูลนี้เพื่อการจอง และติดต่อฉันผ่าน LINE ระหว่างการเข้าพัก</span>
+          </label>
+          <p class="field-error" id="err-consent" aria-live="polite"></p>
+        </div>
+
+        <button id="submit-btn" type="submit" class="btn-gold flex w-full items-center justify-center gap-2 px-5 py-3.5 text-base">
+          <span id="submit-spinner" class="spinner" hidden></span>
+          <span id="submit-label">ยืนยันการจอง</span>
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <!-- ===== Result Dialog (Modal) ===== -->
+  <dialog id="result-dialog" aria-labelledby="dlg-title">
+    <div class="glass rounded-3xl p-6 text-center text-ivory">
+      <div id="dlg-icon" class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full text-2xl"></div>
+      <h3 id="dlg-title" class="font-serif text-xl font-semibold"></h3>
+      <p id="dlg-msg" class="mt-2 text-sm leading-relaxed text-ivory/75"></p>
+
+      <div id="dlg-booking" hidden class="mt-5 rounded-2xl border border-gold/30 bg-black/25 px-4 py-3">
+        <p class="text-xs text-ivory/55">หมายเลขการจอง</p>
+        <p id="dlg-booking-id" class="mt-1 font-mono text-lg tracking-wider text-gold-soft"></p>
+        <button id="dlg-copy" type="button" class="mt-2 text-xs text-gold underline underline-offset-4">คัดลอก</button>
+      </div>
+
+      <button id="dlg-primary" type="button" class="btn-gold mt-6 w-full px-5 py-3"></button>
+    </div>
+  </dialog>
+
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+
+    /* ค่าตั้งภายใน (ปกติไม่ต้องแก้) */
+    const SETTINGS = {
+      MAX_NIGHTS: 30,
+      MAX_DAYS_AHEAD: 365,
+      REQUEST_TIMEOUT_MS: 20000,
+      SKIP_NGROK_WARNING: true, // ส่ง header ข้ามหน้าเตือนของ ngrok แพ็กเกจฟรี
+    };
+
+    const PREVIEW = new URLSearchParams(location.search).get('preview') === '1';
+    const ROOM_TYPES = ['Superior', 'Deluxe', 'Suite'];
+    const TZ = 'Asia/Bangkok';
+    const $ = (sel) => document.querySelector(sel);
+    const isConfigured = (v) => typeof v === 'string' && v.length > 0 && !v.includes('YOUR_');
+
+    /* ---------------- Date helpers (อิงเวลาไทยเสมอ) ---------------- */
+    const todayBKK = () =>
+      new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const addDays = (ymd, n) => {
+      const [y, m, d] = ymd.split('-').map(Number);
+      return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+    };
+    const diffDays = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000);
+    const thaiDate = (ymd) => {
+      const [y, m, d] = ymd.split('-').map(Number);
+      return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+        .format(new Date(Date.UTC(y, m - 1, d)));
+    };
+    // "+66 81-234-5678" → "0812345678"
+    const normPhone = (v) => (v || '').replace(/[\s\-().]/g, '').replace(/^\+?66(?=\d{9}$)/, '0');
+    const newRequestId = () =>
+      (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
+    /* ---------------- UI state ---------------- */
+    const STATES = ['loading', 'outside', 'error'];
+    function showState(name, message) {
+      STATES.forEach((s) => ($('#state-' + s).hidden = s !== name));
+      $('#booking-form').hidden = true;
+      if (name === 'error') $('#state-error-msg').textContent = message || '';
+    }
+    function showForm() {
+      STATES.forEach((s) => ($('#state-' + s).hidden = true));
+      $('#booking-form').hidden = false;
+    }
+
+    /* ---------------- LIFF ---------------- */
+    let profile = null;
+    let isFriend = null; // true / false / null (ตรวจไม่ได้)
+    const liffUrl = () => `https://liff.line.me/${LIFF_ID}`;
+
+    async function initLiff() {
+      if (PREVIEW) {
+        profile = { userId: 'U_PREVIEW', displayName: 'Preview Guest', pictureUrl: '' };
+        $('#preview-badge').hidden = false;
+        renderProfile();
+        showForm();
+        return;
+      }
+      if (!isConfigured(LIFF_ID)) return showState('error', 'ยังไม่ได้ตั้งค่า LIFF_ID ที่ด้านบนไฟล์');
+      if (!window.liff) return showState('error', 'โหลด LINE SDK ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+
+      try {
+        await liff.init({ liffId: LIFF_ID });
+      } catch (err) {
+        return showState('error', 'เชื่อมต่อ LINE ไม่สำเร็จ (' + (err?.message || err) + ')');
+      }
+
+      if (!liff.isLoggedIn()) {
+        if (liff.isInClient()) { liff.login(); return; }
+        // เปิดนอก LINE และยังไม่ล็อกอิน → ให้เลือกเปิดในแอป หรือ ล็อกอินบนเว็บ
+        $('#open-in-line').href = liffUrl();
+        showState('outside');
+        return;
+      }
+
+      try {
+        profile = await liff.getProfile();
+      } catch (err) {
+        return showState('error', 'อ่านข้อมูลบัญชี LINE ไม่ได้ ตรวจว่า LIFF app ติ๊ก scope "profile"');
+      }
+      renderProfile();
+      showForm();
+      await checkFriendship();
+      // กลับมาจากหน้าเพิ่มเพื่อน → ตรวจใหม่
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) checkFriendship(); });
+    }
+
+    function renderProfile() {
+      $('#profile-name').textContent = profile.displayName || 'ผู้ใช้ LINE';
+      if (profile.pictureUrl) {
+        const img = $('#profile-pic');
+        img.src = profile.pictureUrl; img.hidden = false; $('#profile-fallback').hidden = true;
+      }
+    }
+
+    async function checkFriendship() {
+      try {
+        const { friendFlag } = await liff.getFriendship();
+        isFriend = !!friendFlag;
+        $('#friend-warn').hidden = isFriend;
+      } catch {
+        isFriend = null; // OA ยังไม่ได้ผูกกับ LINE Login channel → ข้าม
+      }
+    }
+
+    if (isConfigured(LINE_OA_BASIC_ID)) {
+      const a = $('#add-friend');
+      a.href = 'https://line.me/R/ti/p/' + encodeURIComponent(LINE_OA_BASIC_ID);
+      a.hidden = false;
+    }
+    $('#login-web').addEventListener('click', () => window.liff && liff.login());
+    $('#copy-liff').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(liffUrl()); $('#copy-liff').textContent = 'คัดลอกแล้ว ✓'; }
+      catch { prompt('คัดลอกลิงก์นี้:', liffUrl()); }
+    });
+
+    /* ---------------- Form & validation ---------------- */
+    const form = $('#booking-form');
+    const today = todayBKK();
+    const maxDate = addDays(today, SETTINGS.MAX_DAYS_AHEAD);
+    const ci = $('#check_in'), co = $('#check_out');
+    ci.min = today; ci.max = maxDate;
+    co.min = addDays(today, 1); co.max = addDays(maxDate, SETTINGS.MAX_NIGHTS);
+
+    const rules = {
+      full_name: () => {
+        const v = form.full_name.value.trim();
+        return (v.length >= 2 && v.length <= 100) || 'กรุณากรอกชื่อ-นามสกุล';
+      },
+      phone: () => /^0[689]\d{8}$/.test(normPhone(form.phone.value)) || 'เบอร์มือถือไทย 10 หลัก ขึ้นต้นด้วย 06, 08 หรือ 09',
+      email: () => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.value.trim()) || 'รูปแบบอีเมลไม่ถูกต้อง',
+      check_in: () => {
+        const v = ci.value;
+        if (!v) return 'เลือกวันเช็กอิน';
+        if (v < todayBKK()) return 'เลือกวันที่ผ่านไปแล้วไม่ได้';
+        if (v > maxDate) return 'จองล่วงหน้าได้ไม่เกิน ' + SETTINGS.MAX_DAYS_AHEAD + ' วัน';
+        return true;
+      },
+      check_out: () => {
+        const v = co.value;
+        if (!v) return 'เลือกวันเช็กเอาต์';
+        if (ci.value && v <= ci.value) return 'ต้องหลังวันเช็กอิน';
+        if (ci.value && diffDays(ci.value, v) > SETTINGS.MAX_NIGHTS) return 'เข้าพักได้ไม่เกิน ' + SETTINGS.MAX_NIGHTS + ' คืน';
+        return true;
+      },
+      room_type: () => ROOM_TYPES.includes(form.room_type.value) || 'เลือกประเภทห้อง',
+      consent: () => form.consent.checked || 'กรุณายืนยันการยินยอม',
+    };
+
+    function setFieldError(name, msg) {
+      const el = name === 'room_type' ? $('#room-group') : form.elements[name];
+      const err = $('#err-' + name);
+      if (msg) { el.setAttribute('aria-invalid', 'true'); err.textContent = msg; }
+      else { el.removeAttribute('aria-invalid'); err.textContent = ''; }
+    }
+    function validate(name) {
+      const r = rules[name]();
+      setFieldError(name, r === true ? '' : r);
+      return r === true;
+    }
+    function validateAll() {
+      let firstBad = null;
+      for (const name of Object.keys(rules)) {
+        if (!validate(name) && !firstBad) firstBad = name;
+      }
+      if (firstBad) {
+        const el = firstBad === 'room_type' ? form.querySelector('input[name="room_type"]') : form.elements[firstBad];
+        el.focus();
+      }
+      return !firstBad;
+    }
+
+    ['full_name', 'phone', 'email'].forEach((n) => {
+      form.elements[n].addEventListener('blur', () => form.elements[n].value && validate(n));
+      form.elements[n].addEventListener('input', () => setFieldError(n, ''));
+    });
+    form.consent.addEventListener('change', () => validate('consent'));
+    form.querySelectorAll('input[name="room_type"]').forEach((r) => r.addEventListener('change', () => validate('room_type')));
+
+    ci.addEventListener('change', () => {
+      if (ci.value) {
+        co.min = addDays(ci.value, 1);
+        co.max = addDays(ci.value, SETTINGS.MAX_NIGHTS);
+        if (!co.value || co.value <= ci.value) co.value = addDays(ci.value, 1);
+      }
+      validate('check_in'); if (co.value) validate('check_out');
+      updateSummary();
+    });
+    co.addEventListener('change', () => { validate('check_out'); updateSummary(); });
+
+    function updateSummary() {
+      const box = $('#stay-summary');
+      if (ci.value && co.value && co.value > ci.value) {
+        const n = diffDays(ci.value, co.value);
+        box.textContent = `${n} คืน · ${thaiDate(ci.value)} → ${thaiDate(co.value)}`;
+        box.hidden = false;
+      } else box.hidden = true;
+    }
+
+    /* ---------------- Submit ---------------- */
+    // client_request_id: ใช้ค่าเดิมเมื่อกดส่งซ้ำ (เช่นหลัง timeout) เพื่อให้ n8n กันการจองซ้ำได้
+    let pendingRequestId = null;
+    form.addEventListener('input', () => { pendingRequestId = null; });
+    form.addEventListener('change', () => { pendingRequestId = null; });
+
+    let submitting = false;
+    function setLoading(on) {
+      submitting = on;
+      $('#submit-btn').disabled = on;
+      $('#submit-spinner').hidden = !on;
+      $('#submit-label').textContent = on ? 'กำลังส่งการจอง…' : 'ยืนยันการจอง';
+      form.querySelectorAll('input').forEach((i) => (i.disabled = on));
+    }
+
+    function httpMessage(status) {
+      if (status === 404) return 'ไม่พบระบบรับจอง (Workflow ยังไม่ได้ Publish หรือ URL ผิด)';
+      if (status === 400 || status === 422) return 'ข้อมูลการจองไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
+      if (status === 401 || status === 403) return 'ยืนยันตัวตน LINE ไม่สำเร็จ กรุณาปิดแล้วเปิดหน้านี้ใหม่';
+      if (status >= 500) return 'ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้ง';
+      return 'ส่งการจองไม่สำเร็จ (HTTP ' + status + ')';
+    }
+
+    function onSuccess(data) {
+      pendingRequestId = null;
+      openDialog('success', data);
+      form.reset();
+      co.min = addDays(today, 1); co.max = addDays(maxDate, SETTINGS.MAX_NIGHTS);
+      updateSummary();
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (submitting) return;
+      if (!validateAll()) return;
+
+      let idToken = null;
+      if (!PREVIEW) {
+        const decoded = liff.getDecodedIDToken?.();
+        if (decoded?.exp && decoded.exp * 1000 < Date.now() + 30000) {
+          if (liff.isInClient()) {
+            return openDialog('error', { message: 'เซสชัน LINE หมดอายุ กรุณาปิดแล้วเปิดหน้านี้ใหม่' });
+          }
+          return openDialog('error', {
+            message: 'เซสชัน LINE หมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง',
+            actionLabel: 'เข้าสู่ระบบใหม่',
+            action: () => { liff.logout(); liff.login(); },
+          });
+        }
+        idToken = liff.getIDToken();
+      }
+
+      pendingRequestId = pendingRequestId || newRequestId();
+      const payload = {
+        full_name: form.full_name.value.trim(),
+        phone: normPhone(form.phone.value),
+        email: form.email.value.trim().toLowerCase(),
+        check_in: ci.value,
+        check_out: co.value,
+        room_type: form.room_type.value,
+        line_user_id: profile.userId,
+        line_display_name: profile.displayName || '',
+        line_friend: isFriend,
+        id_token: idToken,
+        pdpa_consent: true,
+        client_request_id: pendingRequestId,
+        source: PREVIEW ? 'preview' : (liff.isInClient() ? 'liff' : 'web'),
+      };
+
+      setLoading(true);
+      try {
+        if (PREVIEW) {
+          await new Promise((r) => setTimeout(r, 900));
+          console.log('[preview] payload', payload);
+          return onSuccess({ booking_id: 'BK-PREVIEW-0000', line_sent: true });
+        }
+
+        const headers = { 'Content-Type': 'application/json' };
+        if (SETTINGS.SKIP_NGROK_WARNING) headers['ngrok-skip-browser-warning'] = '1';
+
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), SETTINGS.REQUEST_TIMEOUT_MS);
+        let res;
+        try {
+          res = await fetch(N8N_WEBHOOK_URL, { method: 'POST', headers, body: JSON.stringify(payload), signal: ctrl.signal });
+        } finally { clearTimeout(timer); }
+
+        const text = await res.text();
+        let data = null;
+        try { data = JSON.parse(text); } catch { /* ไม่ใช่ JSON */ }
+
+        if (res.ok && data?.success === true) {
+          onSuccess(data);
+        } else if (res.ok && !data) {
+          console.error('[booking] non-JSON response', text.slice(0, 300));
+          openDialog('error', { message: 'ระบบตอบกลับผิดรูปแบบ (ตรวจว่า Workflow ตอบด้วย Respond to Webhook แบบ JSON)' });
+        } else {
+          // ใช้ข้อความจาก Workflow เฉพาะเมื่อเป็น error ที่เราตอบเอง ({ success:false, message })
+          const own = data && data.success === false && data.message;
+          openDialog('error', { message: own || httpMessage(res.status) });
+        }
+      } catch (err) {
+        console.error('[booking] fetch failed', err);
+        const message = err?.name === 'AbortError'
+          ? 'ระบบตอบกลับช้าเกินไป กรุณาตรวจใน LINE ก่อนว่าได้รับใบยืนยันหรือยัง แล้วค่อยลองใหม่'
+          : 'เชื่อมต่อระบบจองไม่ได้ ตรวจอินเทอร์เน็ต หรือระบบอาจปิดอยู่';
+        openDialog('error', { message });
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    /* ---------------- Dialog ---------------- */
+    const dlg = $('#result-dialog');
+    let dlgAction = () => dlg.close();
+
+    function openDialog(kind, data = {}) {
+      const ok = kind === 'success';
+      const icon = $('#dlg-icon');
+      icon.textContent = ok ? '✓' : '!';
+      icon.className = 'mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full text-2xl ' +
+        (ok ? 'bg-gold/20 text-gold-soft' : 'bg-[#F28B82]/20 text-[#F6A59E]');
+
+      if (ok) {
+        const lineSent = data.line_sent !== false;
+        const inClient = !PREVIEW && window.liff?.isInClient?.();
+        $('#dlg-title').textContent = 'จองสำเร็จ';
+        $('#dlg-msg').textContent = lineSent
+          ? 'ส่งใบยืนยันเข้า LINE แล้ว'
+          : 'บันทึกการจองเรียบร้อย แต่ส่งใบยืนยันทาง LINE ไม่สำเร็จ กรุณาเพิ่มโรงแรมเป็นเพื่อน หรือแจ้งหมายเลขนี้ที่เคาน์เตอร์';
+        $('#dlg-booking-id').textContent = data.booking_id || '—';
+        $('#dlg-copy').textContent = 'คัดลอก';
+        $('#dlg-booking').hidden = false;
+        $('#dlg-primary').textContent = inClient ? 'กลับไปที่แชท' : 'ปิด';
+        dlgAction = () => { dlg.close(); if (inClient) liff.closeWindow(); };
+      } else {
+        $('#dlg-title').textContent = 'จองไม่สำเร็จ';
+        $('#dlg-msg').textContent = data.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+        $('#dlg-booking').hidden = true;
+        $('#dlg-primary').textContent = data.actionLabel || 'ลองอีกครั้ง';
+        dlgAction = data.action || (() => dlg.close());
+      }
+      if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+      $('#dlg-primary').focus();
+    }
+    $('#dlg-primary').addEventListener('click', () => dlgAction());
+    $('#dlg-copy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText($('#dlg-booking-id').textContent); $('#dlg-copy').textContent = 'คัดลอกแล้ว ✓'; } catch {}
+    });
+
+    /* =========================================================
+       Three.js — Golden particles
+       เบา: pixelRatio ≤ 2, มือถือใช้อนุภาคน้อยลง + 30fps,
+       หยุด render เมื่อซ่อนแท็บ, prefers-reduced-motion = ภาพนิ่ง
+       ========================================================= */
+    function initParticles() {
+      const canvas = $('#bg');
+      const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const isMobile = matchMedia('(pointer: coarse)').matches || innerWidth < 768;
+      const COUNT = reduceMotion ? 300 : isMobile ? 600 : 1500;
+
+      let renderer;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: 'low-power' });
+      } catch { canvas.remove(); return; } // ไม่มี WebGL: ใช้พื้นหลัง gradient อย่างเดียว
+
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(innerWidth, innerHeight, false);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
+      camera.position.z = 12;
+
+      const base = new Float32Array(COUNT * 3);
+      const pos = new Float32Array(COUNT * 3);
+      const col = new Float32Array(COUNT * 3);
+      const seed = new Float32Array(COUNT);
+      const palette = ['#FFF4D6', '#F3D98B', '#D4AF6A', '#B08D3E'].map((c) => new THREE.Color(c));
+      for (let i = 0; i < COUNT; i++) {
+        base[i * 3] = (Math.random() - 0.5) * 30;
+        base[i * 3 + 1] = (Math.random() - 0.5) * 20;
+        base[i * 3 + 2] = (Math.random() - 0.5) * 14;
+        seed[i] = Math.random() * Math.PI * 2;
+        const c = palette[(Math.random() * palette.length) | 0];
+        col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+      }
+      pos.set(base);
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+
+      // sprite วงกลมนุ่ม ๆ วาดจาก canvas (ไม่ต้องโหลดรูป)
+      const sc = document.createElement('canvas'); sc.width = sc.height = 64;
+      const g = sc.getContext('2d');
+      const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grd.addColorStop(0, 'rgba(255,255,255,1)');
+      grd.addColorStop(0.35, 'rgba(255,255,255,.55)');
+      grd.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+      const sprite = new THREE.CanvasTexture(sc);
+
+      const mat = new THREE.PointsMaterial({
+        size: isMobile ? 0.16 : 0.13, map: sprite, vertexColors: true, transparent: true,
+        opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true,
+      });
+      const points = new THREE.Points(geo, mat);
+      scene.add(points);
+
+      // Parallax: เมาส์ / นิ้ว / การเอียงเครื่อง (Android; iOS ต้องขอสิทธิ์จึงไม่เปิด)
+      const target = { x: 0, y: 0 };
+      const clamp = (v) => Math.max(-1, Math.min(1, v));
+      if (!reduceMotion) {
+        addEventListener('pointermove', (e) => {
+          target.x = (e.clientX / innerWidth) * 2 - 1;
+          target.y = (e.clientY / innerHeight) * 2 - 1;
+        }, { passive: true });
+        addEventListener('deviceorientation', (e) => {
+          if (e.gamma == null || e.beta == null) return;
+          target.x = clamp(e.gamma / 30);
+          target.y = clamp((e.beta - 45) / 30);
+        }, { passive: true });
+      }
+
+      function update(t) {
+        for (let i = 0; i < COUNT; i++) {
+          const s = seed[i];
+          pos[i * 3] = base[i * 3] + Math.cos(t * 0.25 + s) * 0.3;
+          pos[i * 3 + 1] = base[i * 3 + 1] + Math.sin(t * 0.35 + s) * 0.45;
+        }
+        geo.attributes.position.needsUpdate = true;
+        points.rotation.y += (target.x * 0.22 + t * 0.01 - points.rotation.y) * 0.04;
+        points.rotation.x += (target.y * 0.12 - points.rotation.x) * 0.04;
+      }
+
+      const clock = new THREE.Clock();
+      let rafId = null, running = false, tick = 0;
+      function frame() {
+        rafId = requestAnimationFrame(frame);
+        if (isMobile && (tick++ & 1)) return; // มือถือ ~30fps
+        update(clock.getElapsedTime());
+        renderer.render(scene, camera);
+      }
+      function start() { if (running || reduceMotion) return; running = true; frame(); }
+      function stop() { running = false; if (rafId) cancelAnimationFrame(rafId); rafId = null; }
+
+      document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+
+      let resizeTimer;
+      addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          camera.aspect = innerWidth / innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(innerWidth, innerHeight, false);
+          if (reduceMotion) renderer.render(scene, camera);
+        }, 150);
+      });
+
+      if (reduceMotion) { update(0); renderer.render(scene, camera); } // ภาพนิ่ง 1 เฟรม
+      else start();
+    }
+
+    /* ---------------- Boot ---------------- */
+    try { initParticles(); } catch (e) { console.warn('particles disabled', e); }
+    initLiff();
+  </script>
+</body>
+</html>
