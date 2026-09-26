@@ -1,0 +1,19 @@
+{
+  "full_name": "ทดสอบ ระบบ",
+  "phone": "0812345678",
+  "email": "test@example.com",
+  "line_user_id": "ใส่_Your_user_ID_ของคุณ",
+  "check_in": "2026-10-10",
+  "check_out": "2026-10-12",
+  "room_type": "Deluxe",
+  "adults": 2,
+  "children": 0,
+  "arrival_time": "18:00-20:00",
+  "special_requests": "ห้องเงียบ",
+  "promo_code": "WELCOME10",
+  "pdpa_consent": true,
+  "line_friend": true,
+  "client_request_id": "curl-test-v2-0001",
+  "source": "web",
+  "id_token": null
+}

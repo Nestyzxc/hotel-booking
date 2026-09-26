@@ -1,0 +1,27 @@
+# ============ Secrets ============
+.env
+sai-lan-hotel-*.json
+*.pem
+*.key
+
+# ============ Build artifacts ============
+scripts/bin/
+scripts/obj/
+*.dll
+*.exe
+*.pdb
+
+# ============ Screenshots / temp ============
+*.png.bak
+*.log
+.n8n/
+node_modules/
+
+# ============ OS ============
+.DS_Store
+Thumbs.db
+
+# ============ Office temp locks ============
+~$.*
+~*.tmp
+*.lock

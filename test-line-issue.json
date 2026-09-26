@@ -1,0 +1,18 @@
+{
+  "destination": "Ubot",
+  "events": [
+    {
+      "mode": "active",
+      "timestamp": 0,
+      "replyToken": "00000000000000000000000000000000",
+      "source": {
+        "type": "user",
+        "userId": "ใส่_Your_user_ID"
+      },
+      "type": "postback",
+      "postback": {
+        "data": "action=issue&booking_id=ใส่_booking_id&cat=แอร์"
+      }
+    }
+  ]
+}

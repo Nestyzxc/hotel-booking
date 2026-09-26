@@ -1,0 +1,442 @@
+{
+  "name": "F - Daily Pre-arrival & Housekeeping 09:00",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 9,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "fa1fddf4-98f6-59b2-8c7e-43ba150f1be8",
+      "name": "Every Day 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1b3KoLtqp2wt_2rtRFNqdx0dkVoeujHMUR4QtwYwQwkA/values:batchGet?ranges=Config&ranges=RoomTypes&ranges=Rooms&ranges=Bookings&ranges=ActivityLog&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "91f519c9-ec86-54fd-abbf-3cf1c2500616",
+      "name": "Read Sheets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        220,
+        300
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": null,
+          "name": "Google Sheets SA"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ===== Sai Lan helpers (ชุดเดียวกันทุก workflow) =====\nconst ZONE = 'Asia/Bangkok';\nconst NOW = $now.setZone(ZONE);\nconst TODAY = NOW.toFormat('yyyy-MM-dd');\nconst TOMORROW = NOW.plus({ days: 1 }).toFormat('yyyy-MM-dd');\nconst TS = NOW.toISO();\nconst ACTIVE = ['Confirmed', 'Checked-in', 'Need Attention'];          // สถานะที่ \"กินห้อง\"\nconst STATUS_TH = { 'Confirmed': 'ยืนยันแล้ว', 'Checked-in': 'กำลังเข้าพัก', 'Need Attention': 'ต้องดูแลด่วน',\n  'Checked-out': 'เช็กเอาต์แล้ว', 'Cancelled': 'ยกเลิกแล้ว', 'No-show': 'ไม่มาเข้าพัก' };\nconst HK_STATUS = ['Clean', 'Dirty', 'Cleaning', 'Out of Order'];\nconst HK_TH = { 'Clean': 'พร้อมเข้าพัก', 'Dirty': 'รอทำความสะอาด', 'Cleaning': 'กำลังทำความสะอาด', 'Out of Order': 'ปิดปรับปรุง' };\n\nconst num = (v, d = 0) => { const s = String(v ?? '').replace(/,/g, '').trim(); const n = Number(s); return s !== '' && Number.isFinite(n) ? n : d; };\nconst bool = (v, d = false) => { const s = String(v ?? '').trim().toUpperCase(); return s === '' ? d : ['TRUE', 'YES', 'Y', '1', 'ON'].includes(s); };\nconst list = (v) => String(v ?? '').split(/[\\n,]+/).map((s) => s.trim()).filter(Boolean);\nconst clip = (v, n) => String(v ?? '').trim().slice(0, n);\n\n// วันที่จากชีต → yyyy-MM-dd (รองรับเลข serial ของ Sheets และ d/m/yyyy แบบไทย)\nconst normDate = (v) => {\n  const s = String(v ?? '').trim();\n  if (!s) return '';\n  if (/^\\d{4}-\\d{2}-\\d{2}/.test(s)) return s.slice(0, 10);\n  if (/^\\d{5}(\\.\\d+)?$/.test(s)) return DateTime.fromISO('1899-12-30', { zone: ZONE }).plus({ days: Math.floor(Number(s)) }).toFormat('yyyy-MM-dd');\n  const m = s.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);\n  if (m) { let y = Number(m[3]); if (y > 2400) y -= 543; return `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; }\n  return s;\n};\n\n// ผลลัพธ์ Sheets API values:batchGet → { Config:[{...}], Bookings:[...], ..., cfg:{key:value} }\nfunction readSheets(resp) {\n  const S = {};\n  for (const vr of resp.valueRanges || []) {\n    const name = String(vr.range || '').split('!')[0].replace(/^'(.*)'$/, '$1');\n    const [head = [], ...rows] = vr.values || [];\n    const keys = head.map((h) => String(h ?? '').trim());\n    S[name] = rows.filter((r) => (r || []).some((c) => String(c ?? '').trim() !== '')).map((r) => {\n      const o = {};\n      keys.forEach((k, j) => { if (k) o[k] = r[j] == null ? '' : String(r[j]).trim(); });\n      return o;\n    });\n  }\n  for (const k of ['Config', 'Bookings', 'RoomTypes', 'Rooms', 'Offers', 'Promos', 'Messages', 'ActivityLog']) S[k] = S[k] || [];\n  S.Bookings = S.Bookings.filter((b) => b.booking_id);\n  for (const b of S.Bookings) { b.check_in = normDate(b.check_in); b.check_out = normDate(b.check_out); }\n  S.RoomTypes = S.RoomTypes.filter((t) => t.room_type).sort((a, b) => num(a.sort_order, 99) - num(b.sort_order, 99));\n  S.Rooms = S.Rooms.filter((r) => r.room_number).map((r) => ({ ...r, hk_status: HK_STATUS.includes(r.hk_status) ? r.hk_status : 'Clean' }));\n  S.cfg = {};\n  for (const r of S.Config) if (r.key) S.cfg[String(r.key).trim()] = r.value ?? '';\n  return S;\n}\n\nconst overlaps = (aIn, aOut, bIn, bOut) => aIn < bOut && bIn < aOut;   // คืนที่ทับกัน (วันเช็กเอาต์ไม่นับ)\n\n// ห้องว่างแต่ละประเภทในช่วงวัน (ไม่นับห้อง Out of Order และหักการจองที่ยังไม่ได้ระบุเลขห้อง)\nfunction availability(S, ci, co, exceptId = '') {\n  const busy = S.Bookings.filter((b) => ACTIVE.includes(b.status) && b.booking_id !== exceptId\n    && b.check_in && b.check_out && overlaps(ci, co, b.check_in, b.check_out));\n  const busyRooms = new Set(busy.filter((b) => b.room_number).map((b) => String(b.room_number)));\n  const out = {};\n  for (const t of S.RoomTypes) {\n    const units = S.Rooms.filter((r) => r.room_type === t.room_type && r.hk_status !== 'Out of Order');\n    const free = units.filter((r) => !busyRooms.has(String(r.room_number)));\n    const unassigned = busy.filter((b) => !b.room_number && b.room_type === t.room_type).length;\n    out[t.room_type] = { total: units.length, free, available: Math.max(0, free.length - unassigned) };\n  }\n  return out;\n}\n// เลือกห้อง: ห้องว่างที่สะอาดก่อน → ห้องว่างที่รอทำความสะอาด → ห้องที่แขกเดิมจะเช็กเอาต์วันนี้\n// ขอ \"ชั้นสูง\" → ชั้นสูงก่อน, ที่เหลือเรียงเลขห้อง\nfunction pickRoom(free, requests = '', S = null) {\n  const high = /ชั้นสูง/.test(requests);\n  const occupied = new Set((S ? S.Bookings : []).filter((x) => ['Checked-in', 'Need Attention'].includes(x.status) && x.room_number)\n    .map((x) => String(x.room_number)));\n  const rank = (r) => (occupied.has(String(r.room_number)) ? 2 : r.hk_status === 'Clean' ? 0 : 1);\n  return [...free].sort((a, b) => (rank(a) - rank(b))\n    || (high ? num(b.floor) - num(a.floor) : 0)\n    || String(a.room_number).localeCompare(String(b.room_number), 'en', { numeric: true }))[0];\n}\n\n// ราคาต่อคืน (คืนวันศุกร์-เสาร์ใช้ weekend_price ถ้ามี)\nfunction quote(type, ci, co) {\n  const nights = [];\n  let d = DateTime.fromISO(ci, { zone: ZONE });\n  const end = DateTime.fromISO(co, { zone: ZONE });\n  while (d.isValid && end.isValid && d < end && nights.length < 60) {\n    const weekend = d.weekday === 5 || d.weekday === 6;\n    const price = weekend && num(type.weekend_price) > 0 ? num(type.weekend_price) : num(type.price);\n    nights.push({ date: d.toFormat('yyyy-MM-dd'), price, weekend });\n    d = d.plus({ days: 1 });\n  }\n  return { nights, subtotal: nights.reduce((s, n) => s + n.price, 0) };\n}\n\n// โค้ดส่วนลด: ดีลส่วนตัวจากชีต Offers (Workflow E) หรือโค้ดทั่วไปจากชีต Promos\nfunction checkPromo(S, code, uid) {\n  code = String(code ?? '').trim().toUpperCase();\n  if (!code) return null;\n  const o = S.Offers.find((x) => String(x.promo_code).toUpperCase() === code);\n  if (o) {\n    if (o.converted_booking_id) return { code, valid: false, message: 'โค้ดนี้ถูกใช้ไปแล้ว' };\n    if (o.valid_until && normDate(o.valid_until) < TODAY) return { code, valid: false, message: 'โค้ดนี้หมดอายุแล้ว' };\n    if (uid && o.line_user_id && o.line_user_id !== uid) return { code, valid: false, message: 'โค้ดนี้เป็นสิทธิ์เฉพาะบัญชี LINE ที่ได้รับดีล' };\n    const pct = num(o.discount, 10);\n    return { code, valid: true, percent: pct, kind: 'personal', label: `ดีลพิเศษสำหรับคุณ ลด ${pct}%` };\n  }\n  const p = S.Promos.find((x) => String(x.code).toUpperCase() === code);\n  if (p) {\n    if (!bool(p.active, true)) return { code, valid: false, message: 'โค้ดนี้ปิดใช้งานแล้ว' };\n    if (p.valid_until && normDate(p.valid_until) < TODAY) return { code, valid: false, message: 'โค้ดนี้หมดอายุแล้ว' };\n    const pct = num(p.discount_percent);\n    return { code, valid: pct > 0, percent: pct, kind: 'general', label: p.note || `ส่วนลด ${pct}%`, message: pct > 0 ? '' : 'โค้ดนี้ไม่มีส่วนลด' };\n  }\n  return { code, valid: false, message: 'ไม่พบโค้ดส่วนลดนี้' };\n}\nconst discountOf = (subtotal, promo) => (promo && promo.valid ? Math.round(subtotal * Math.min(100, Math.max(0, promo.percent)) / 100) : 0);\nconst freeCancelUntil = (S, ci) => DateTime.fromISO(ci, { zone: ZONE }).minus({ days: num(S.cfg.free_cancel_days, 1) }).toFormat('yyyy-MM-dd');\nconst thaiDate = (ymd, weekday = true) => {\n  const d = DateTime.fromISO(String(ymd || ''), { zone: ZONE });\n  return d.isValid ? d.setLocale('th-TH').toLocaleString(weekday ? { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'short', year: 'numeric' }) : String(ymd || '-');\n};\nconst baht = (n) => '฿' + Math.round(num(n)).toLocaleString('en-US');\nconst guestsText = (b) => `${num(b.adults, 1)} ผู้ใหญ่${num(b.children) ? ` · ${num(b.children)} เด็ก` : ''}`;\nconst roomTypeName = (S, rt) => (S.RoomTypes.find((t) => t.room_type === rt) || {}).name || rt;\nconst hotelName = (S) => S.cfg.hotel_name || 'Sai Lan Hotel';\n\n// ---- Flex แจ้งกลุ่มแม่บ้าน ----\nfunction kv(label, value, strong = true) {\n  return { type: 'box', layout: 'baseline', spacing: 'sm', contents: [\n    { type: 'text', text: label, size: 'sm', color: '#8A8578', flex: 3 },\n    { type: 'text', text: String(value || '-'), size: 'sm', color: '#1F1F25', weight: strong ? 'bold' : 'regular', flex: 7, wrap: true },\n  ] };\n}\nfunction hkFlex(S, kind, b, extra = {}) {\n  const TITLES = {\n    new: ['📋 การจองใหม่ · เตรียมห้อง', '#8A6A1F'],\n    checkout: ['🧹 เช็กเอาต์แล้ว · ทำความสะอาด', '#B23A2E'],\n    move: ['🔁 แขกย้ายห้อง · ห้องเดิมว่างแล้ว', '#B23A2E'],\n    reassign: ['🔁 เปลี่ยนห้อง · เตรียมห้องใหม่', '#8A6A1F'],\n    cancel: ['❌ ยกเลิกการจอง · ไม่ต้องเตรียมห้อง', '#5C5850'],\n  };\n  const prep = kind === 'new' || kind === 'reassign';\n  const [title, color] = TITLES[kind] || TITLES.new;\n  const room = String(extra.room || b.room_number || '');\n  const rows = [kv('ห้อง', `${room || 'ยังไม่ระบุ'} · ${roomTypeName(S, b.room_type)}`)];\n  if (kind === 'reassign' && extra.from) rows.push(kv('ห้องเดิม', `${extra.from} (ไม่ต้องเตรียมแล้ว)`, false));\n  if (prep || kind === 'cancel') {\n    rows.push(kv('เช็กอิน', `${thaiDate(b.check_in)} · ${S.cfg.checkin_time || '14:00'}`));\n    rows.push(kv('เช็กเอาต์', thaiDate(b.check_out)));\n  }\n  if (prep) {\n    rows.push(kv('ผู้เข้าพัก', guestsText(b)));\n    if (b.arrival_time) rows.push(kv('เวลาถึง', b.arrival_time));\n    if (b.special_requests) rows.push(kv('คำขอพิเศษ', b.special_requests));\n    if (b.check_in === TODAY) rows.push({ type: 'text', text: '⚡ เข้าพักวันนี้ กรุณาเตรียมห้องด่วน', size: 'sm', color: '#B23A2E', weight: 'bold', wrap: true, margin: 'md' });\n  }\n  if (kind === 'checkout' || kind === 'move') {\n    rows.push(kv('เวลา', `${NOW.toFormat('HH:mm')} น.`));\n    rows.push(kv('แขกถัดไป', extra.next || 'ยังไม่มีการจอง', !!extra.next));\n  }\n  const buttons = [];\n  if (room && kind !== 'cancel') {\n    if (!prep) buttons.push({ type: 'button', style: 'secondary', height: 'sm',\n      action: { type: 'postback', label: 'เริ่มทำความสะอาด', data: `action=hk_start&room=${encodeURIComponent(room)}`, displayText: `🧹 เริ่มทำความสะอาดห้อง ${room}` } });\n    buttons.push({ type: 'button', style: 'primary', color: '#2E7D4F', height: 'sm',\n      action: { type: 'postback', label: 'ห้องพร้อมแล้ว ✅', data: `action=hk_done&room=${encodeURIComponent(room)}`, displayText: `✅ ห้อง ${room} พร้อมแล้ว` } });\n  }\n  const bubble = {\n    type: 'bubble', size: 'kilo',\n    header: { type: 'box', layout: 'vertical', backgroundColor: color, paddingAll: '14px',\n      contents: [{ type: 'text', text: title, color: '#FFFFFF', weight: 'bold', size: 'md', wrap: true }] },\n    body: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '14px', contents: rows },\n  };\n  if (buttons.length) bubble.footer = { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '12px', contents: buttons };\n  return { type: 'flex', altText: `${title} ห้อง ${room || '-'}`, contents: bubble };\n}\n// แขกคนถัดไปของห้องนี้ (วันนี้หรือหลังจากนี้)\nfunction nextArrival(S, room, exceptId = '') {\n  const n = S.Bookings.filter((x) => String(x.room_number) === String(room) && x.booking_id !== exceptId\n    && x.status === 'Confirmed' && x.check_in >= TODAY).sort((a, c) => a.check_in.localeCompare(c.check_in))[0];\n  if (!n) return '';\n  return n.check_in === TODAY ? `⚠️ วันนี้ ${S.cfg.checkin_time || '14:00'} (${n.booking_id})` : `${thaiDate(n.check_in)} (${n.booking_id})`;\n}\n// ===== จบ helpers =====\n\n// ===== Plan Daily (Run Once for All Items) =====\n// 1) แขกที่เข้าพัก \"พรุ่งนี้\" → ข้อความเตรียมตัวก่อนเข้าพัก (ส่งครั้งเดียวต่อการจอง ดูจาก ActivityLog)\n// 2) กลุ่มแม่บ้าน → สรุปงานประจำวัน (เข้าพัก / เช็กเอาต์ / พักต่อ / ห้องรอทำความสะอาด)\nconst S = readSheets($input.first().json);\nconst cfg = S.cfg;\nconst HOTEL = hotelName(S);\nconst out = [];\nconst byRoom = (a, b) => String(a.room_number || 'zzz').localeCompare(String(b.room_number || 'zzz'), 'en', { numeric: true });\nconst header = (small, title) => ({ type: 'box', layout: 'vertical', backgroundColor: '#16161A', paddingAll: '18px', contents: [\n  { type: 'text', text: small, size: 'xs', color: '#D4AF6A', weight: 'bold', wrap: true },\n  { type: 'text', text: title, size: 'lg', color: '#FAF7F0', weight: 'bold', margin: 'sm', wrap: true } ] });\n\n// ---------- 1) Pre-arrival ----------\nif (bool(cfg.pre_arrival_enabled, true)) {\n  const sent = new Set(S.ActivityLog.filter((a) => a.action === 'pre_arrival').map((a) => a.booking_id));\n  const MAX = Math.max(0, num(cfg.pre_arrival_max_per_day, 30));\n  const guests = S.Bookings.filter((b) => b.status === 'Confirmed' && b.check_in === TOMORROW\n    && /^U[0-9a-f]{32}$/.test(b.line_user_id) && !sent.has(b.booking_id)).slice(0, MAX);\n  for (const b of guests) {\n    const first = String(b.full_name || '').trim().split(/\\s+/)[0] || 'ลูกค้า';\n    const rows = [\n      kv('หมายเลข', b.booking_id),\n      kv('ห้องพัก', roomTypeName(S, b.room_type)),\n      kv('เช็กอิน', `${thaiDate(b.check_in)} ตั้งแต่ ${cfg.checkin_time || '14:00'} น.`),\n      kv('เช็กเอาต์', `${thaiDate(b.check_out)} ก่อน ${cfg.checkout_time || '12:00'} น.`),\n      kv('ผู้เข้าพัก', guestsText(b)),\n    ];\n    if (num(b.price_total)) rows.push(kv('ยอดชำระ', `${baht(b.price_total)}${b.payment_status === 'Paid' ? ' (ชำระแล้ว)' : ' · ชำระที่โรงแรม'}`));\n    if (b.special_requests) rows.push(kv('คำขอพิเศษ', b.special_requests, false));\n    if (cfg.hotel_address) rows.push(kv('ที่อยู่', cfg.hotel_address, false));\n    rows.push({ type: 'text', size: 'xs', color: '#5C5850', wrap: true, margin: 'lg',\n      text: b.arrival_time ? `เราเตรียมต้อนรับคุณช่วง ${b.arrival_time} แล้วค่ะ ถ้าเปลี่ยนเวลา พิมพ์บอกในแชทนี้ได้เลย`\n        : 'ถ้าทราบเวลาถึงโดยประมาณ พิมพ์บอกเราในแชทนี้ได้เลยค่ะ จะได้เตรียมห้องให้พร้อม' });\n    const buttons = [];\n    if (cfg.hotel_map_url) buttons.push({ type: 'button', style: 'primary', color: '#B08D3E', height: 'sm',\n      action: { type: 'uri', label: 'เปิดแผนที่', uri: cfg.hotel_map_url } });\n    buttons.push({ type: 'button', style: 'secondary', height: 'sm', action: { type: 'message', label: 'การจองของฉัน', text: 'การจองของฉัน' } });\n    const message = { type: 'flex', altText: `พรุ่งนี้พบกันที่ ${HOTEL} · ${b.booking_id}`, contents: { type: 'bubble', size: 'mega',\n      header: header(HOTEL, `พรุ่งนี้พบกันนะคะ คุณ${first} 🧳`),\n      body: { type: 'box', layout: 'vertical', spacing: 'md', paddingAll: '18px', contents: rows },\n      footer: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '14px', contents: buttons } } };\n    out.push({ json: { kind: 'pre_arrival', booking_id: b.booking_id, push_body: { to: b.line_user_id, messages: [message] },\n      activity: { timestamp: TS, staff: 'ระบบ', action: 'pre_arrival', booking_id: b.booking_id, room_number: b.room_number || '',\n        detail: 'ส่งข้อความก่อนเข้าพัก' } }, pairedItem: { item: 0 } });\n  }\n}\n\n// ---------- 2) สรุปงานแม่บ้าน ----------\nif (cfg.housekeeping_group_id && bool(cfg.hk_daily_digest, true)) {\n  const inHouse = S.Bookings.filter((b) => ['Checked-in', 'Need Attention'].includes(b.status));\n  const arrivals = S.Bookings.filter((b) => b.status === 'Confirmed' && b.check_in === TODAY).sort(byRoom);\n  const departures = inHouse.filter((b) => b.check_out <= TODAY).sort(byRoom);\n  const stayovers = inHouse.filter((b) => b.check_out > TODAY).sort(byRoom);\n  const dirty = S.Rooms.filter((r) => ['Dirty', 'Cleaning'].includes(r.hk_status));\n  const ooo = S.Rooms.filter((r) => r.hk_status === 'Out of Order');\n  const line = (t, color = '#1F1F25') => ({ type: 'text', text: t, size: 'sm', color, wrap: true });\n  const section = (title, items, render, empty) => [\n    { type: 'text', text: `${title} (${items.length})`, size: 'sm', weight: 'bold', color: '#8A6A1F', margin: 'lg' },\n    ...(items.length ? items.slice(0, 15).map(render) : [line(empty, '#8A8578')]),\n    ...(items.length > 15 ? [line(`… และอีก ${items.length - 15} รายการ ดูในระบบหลังบ้าน`, '#8A8578')] : []),\n  ];\n  const room = (b) => (b.room_number ? `ห้อง ${b.room_number}` : 'ยังไม่ระบุห้อง');\n  if (arrivals.length || departures.length || stayovers.length || dirty.length) {\n    const contents = [\n      ...section('🛎️ เข้าพักวันนี้', arrivals, (b) => line(`${room(b)} · ${roomTypeName(S, b.room_type)}${b.arrival_time ? ' · ถึง ' + b.arrival_time : ''}${b.special_requests ? ' · ' + b.special_requests : ''}`), 'ไม่มี'),\n      ...section('🧳 เช็กเอาต์วันนี้', departures, (b) => line(`${room(b)} · ก่อน ${cfg.checkout_time || '12:00'} น.`), 'ไม่มี'),\n      ...section('🛏️ พักต่อ (ทำความสะอาดระหว่างพัก)', stayovers, (b) => line(`${room(b)} · ถึง ${thaiDate(b.check_out, false)}`), 'ไม่มี'),\n      ...section('🧹 ห้องรอทำความสะอาดตอนนี้', dirty, (r) => line(`ห้อง ${r.room_number} · ${HK_TH[r.hk_status]}${r.hk_note ? ' · ' + r.hk_note : ''}`, '#B23A2E'), 'ไม่มี'),\n    ];\n    if (ooo.length) contents.push(...section('⛔ ปิดปรับปรุง', ooo, (r) => line(`ห้อง ${r.room_number}${r.hk_note ? ' · ' + r.hk_note : ''}`, '#5C5850'), ''));\n    contents.push({ type: 'text', text: 'กดปุ่มในข้อความแจ้งเช็กเอาต์ของแต่ละห้อง เพื่ออัปเดตสถานะเมื่อทำเสร็จ', size: 'xxs', color: '#8A8578', wrap: true, margin: 'lg' });\n    out.push({ json: { kind: 'digest', push_body: { to: cfg.housekeeping_group_id, messages: [{ type: 'flex',\n      altText: `งานแม่บ้านวันนี้: เข้า ${arrivals.length} · ออก ${departures.length} · พักต่อ ${stayovers.length} · รอทำ ${dirty.length}`,\n      contents: { type: 'bubble', size: 'mega', header: header(HOTEL, `งานแม่บ้านวันนี้ · ${thaiDate(TODAY)}`),\n        body: { type: 'box', layout: 'vertical', spacing: 'xs', paddingAll: '16px', contents } } }] } }, pairedItem: { item: 0 } });\n  }\n}\nreturn out;\n"
+      },
+      "id": "80b7b918-c67f-5a69-8f09-5f392ba69b3a",
+      "name": "Plan Daily",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "44e9b33c-b0ea-5d13-a49e-51af26b6a864",
+              "leftValue": "={{ $json.kind === 'pre_arrival' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": false,
+        "options": {}
+      },
+      "id": "1f59a12c-162b-55ef-a75a-16dd97254480",
+      "name": "Is Pre-arrival?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.push_body) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "e0ea971c-e011-5720-a2df-a23017c3c73d",
+      "name": "Send Pre-arrival",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        880,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": null,
+          "name": "LINE Channel Token"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "268a20dc-64d6-5891-b1d8-0f8793df1e3c",
+              "leftValue": "={{ $json.statusCode === 200 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": false,
+        "options": {}
+      },
+      "id": "34f09933-1aea-54bd-9554-1fb4976d1222",
+      "name": "Sent OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1100,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1b3KoLtqp2wt_2rtRFNqdx0dkVoeujHMUR4QtwYwQwkA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ActivityLog",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $('Is Pre-arrival?').item.json.activity.timestamp }}",
+            "staff": "={{ $('Is Pre-arrival?').item.json.activity.staff }}",
+            "action": "={{ $('Is Pre-arrival?').item.json.activity.action }}",
+            "booking_id": "={{ $('Is Pre-arrival?').item.json.activity.booking_id }}",
+            "room_number": "={{ $('Is Pre-arrival?').item.json.activity.room_number }}",
+            "detail": "={{ $('Is Pre-arrival?').item.json.activity.detail }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "staff",
+              "displayName": "staff",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "booking_id",
+              "displayName": "booking_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "room_number",
+              "displayName": "room_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detail",
+              "displayName": "detail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "3dec6c85-a8ea-50af-86d1-e7b85f3d8558",
+      "name": "Log Pre-arrival",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1320,
+        120
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": null,
+          "name": "Google Sheets SA"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "37c87770-c304-5c44-84b0-15c36379a83d",
+              "leftValue": "={{ $json.kind === 'digest' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": false,
+        "options": {}
+      },
+      "id": "3033df41-65e4-50d1-b9cf-d00f074ef789",
+      "name": "Is Digest?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        660,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.push_body) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "77406fff-906a-5192-a205-04eb0bfa772f",
+      "name": "Send Digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        880,
+        420
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": null,
+          "name": "LINE Channel Token"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Every Day 09:00": {
+      "main": [
+        [
+          {
+            "node": "Read Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sheets": {
+      "main": [
+        [
+          {
+            "node": "Plan Daily",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Daily": {
+      "main": [
+        [
+          {
+            "node": "Is Pre-arrival?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Digest?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Pre-arrival?": {
+      "main": [
+        [
+          {
+            "node": "Send Pre-arrival",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Pre-arrival": {
+      "main": [
+        [
+          {
+            "node": "Sent OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sent OK?": {
+      "main": [
+        [
+          {
+            "node": "Log Pre-arrival",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Is Digest?": {
+      "main": [
+        [
+          {
+            "node": "Send Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Bangkok"
+  },
+  "pinData": {}
+}

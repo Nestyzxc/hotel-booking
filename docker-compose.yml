@@ -1,0 +1,27 @@
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:2.32.6
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - GENERIC_TIMEZONE=Asia/Bangkok
+      - TZ=Asia/Bangkok
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_RUNNERS_ENABLED=true
+      - WEBHOOK_URL=https://${NGROK_DOMAIN}/
+      - N8N_PROXY_HOPS=1
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: unless-stopped
+    command: http n8n:5678 --url https://${NGROK_DOMAIN}
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    depends_on:
+      - n8n
+
+volumes:
+  n8n_data:

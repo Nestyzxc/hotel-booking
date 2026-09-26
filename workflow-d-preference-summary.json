@@ -1,0 +1,454 @@
+{
+  "name": "D - Preference Summary",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1,
+              "triggerAtMinute": 15
+            }
+          ]
+        }
+      },
+      "id": "e9ab086c-6bf7-56c3-84d5-48ffc7c7db72",
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1b3KoLtqp2wt_2rtRFNqdx0dkVoeujHMUR4QtwYwQwkA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Bookings",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "202b0c0f-8203-550a-b748-b41b27f98136",
+      "name": "Read Bookings",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "573ae438-eca6-5f55-ace2-5e4cfe08a4ab",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "Checked-out",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "a83c3ec1-617e-59ec-9ed0-0b2924af8562",
+              "leftValue": "={{ $json.preference_tags }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "aa4801ac-766a-5af8-9655-d47ef314c741",
+              "leftValue": "={{ $json.line_user_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "a05c3c95-f394-57f6-a991-13527170cb8f",
+      "name": "Checked-out Without Tags",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1b3KoLtqp2wt_2rtRFNqdx0dkVoeujHMUR4QtwYwQwkA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Messages",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "555ce84a-7c99-5843-8b0a-312fc64af4b1",
+      "name": "Read Messages",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        660,
+        300
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ===== Build Prompt (Run Once for All Items) =====\n// แขกที่เช็กเอาต์แล้ว + ยังไม่มี preference_tags → รวมข้อความแชทของแขกคนนั้นเป็นข้อความเดียว\nconst MAX_PER_RUN = 5;          // จำกัดต่อรอบ กันชนโควตา Gemini ฟรี\nconst MAX_CHARS = 3000;\n// ข้อความจากปุ่มเมนู ไม่ใช่ความชอบของแขก → ตัดทิ้ง\nconst IGNORE = new Set(['การจองของฉัน', 'แจ้งปัญหา', 'ข้อมูลโรงแรม', 'ติดต่อพนักงาน']);\n\nconst messages = $('Read Messages').all().map((i) => i.json).filter((m) => m.line_user_id && m.text);\nconst mask = (t) => String(t)\n  .replace(/[\\w.+-]+@[\\w-]+\\.[\\w.]+/g, '[email]')      // อีเมล\n  .replace(/(\\+?66|0)[\\d\\s-]{8,11}\\d/g, '[phone]');    // เบอร์โทร\n\nconst out = [];\nfor (const it of $('Checked-out Without Tags').all().slice(0, MAX_PER_RUN)) {\n  const b = it.json;\n  const texts = [];\n  for (const m of messages) {\n    if (m.line_user_id !== b.line_user_id) continue;\n    if (m.booking_id && m.booking_id !== b.booking_id) continue;   // ข้อความของการจองอื่น\n    if (m.direction && m.direction !== 'in') continue;\n    const t = String(m.text).trim();\n    if (!t || IGNORE.has(t) || /^\\[[a-z]+\\]$/.test(t)) continue;  // ปุ่มเมนู / [sticker] / [image]\n    if (!texts.includes(t)) texts.push(mask(t));\n  }\n  let joined = texts.map((t) => '- ' + t).join('\\n');\n  if (joined.length > MAX_CHARS) joined = joined.slice(-MAX_CHARS);   // เก็บข้อความล่าสุด\n\n  out.push({\n    json: {\n      booking_id: b.booking_id,\n      message_count: texts.length,\n      has_messages: texts.length > 0,\n      prompt: texts.length ? `ข้อความของแขกระหว่างเข้าพัก:\\n${joined}` : '',\n      preference_tags: texts.length ? '' : '-',   // \"-\" = ตรวจแล้วแต่ไม่มีข้อมูล (จะได้ไม่วนมาทำซ้ำ)\n    },\n    pairedItem: { item: 0 },\n  });\n}\nreturn out;\n"
+      },
+      "id": "b9fb7a87-561a-5e8c-9284-79ad36347e4d",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "79fc2f1a-7f12-5b63-9892-f73ef47dbdfd",
+              "leftValue": "={{ $json.has_messages }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": false,
+        "options": {}
+      },
+      "id": "6e249766-7563-5af5-8236-c6696ef257b6",
+      "name": "Has Messages?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.prompt }}",
+              "role": "user"
+            }
+          ]
+        },
+        "simplify": true,
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {
+          "systemMessage": "คุณคือผู้ช่วยของโรงแรม หน้าที่คือสรุป \"ความชอบและความต้องการ\" ของแขกจากข้อความแชทระหว่างเข้าพัก เพื่อให้โรงแรมเตรียมบริการได้ตรงใจในการเข้าพักครั้งถัดไป\nกติกา:\n1. ตอบเป็น JSON เท่านั้น รูปแบบ {\"tags\": [\"...\", \"...\"]} ห้ามมีข้อความอื่น\n2. แต่ละ tag เป็นภาษาไทย สั้น กระชับ ไม่เกิน 6 คำ เช่น \"ชอบห้องเงียบ\", \"ไม่เอาหมอนขนเป็ด\", \"ขอเช็กเอาต์ช้า\"\n3. สูงสุด 5 tags เฉพาะสิ่งที่นำไปใช้บริการครั้งหน้าได้ (ห้อง ที่นอน อาหาร เวลา การเดินทาง ความชอบส่วนตัว)\n4. ห้ามใส่ชื่อ เบอร์โทร อีเมล หรือข้อมูลส่วนตัว ห้ามเดาสิ่งที่แขกไม่ได้พูด\n5. ถ้าข้อมูลไม่พอ ให้ตอบ {\"tags\": []}",
+          "temperature": 0.2
+        }
+      },
+      "id": "c8ba05e1-70b8-5f45-a201-6755b4313cec",
+      "name": "Summarize with Gemini",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1320,
+        200
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ===== Parse Tags (Run Once for All Items) =====\n// แปลงคำตอบ Gemini → \"tag1,tag2\" (มี fallback ถ้า JSON พัง)\nconst out = [];\n$input.all().forEach((it, i) => {\n  const src = $('Build Prompt').itemMatching(i).json;\n  if (it.json.error) return;              // Gemini error (เช่นโควตาเต็ม) → ข้าม รอบหน้าลองใหม่\n\n  const raw = (it.json.content?.parts || []).map((p) => p.text || '').join('').trim();\n  let tags = null;\n  const tryParse = (s) => { try { const j = JSON.parse(s); return Array.isArray(j) ? j : j.tags; } catch { return null; } };\n\n  // 1) JSON ตรง ๆ  2) ตัด ```json ... ``` ออก  3) หา {...} ก้อนแรก\n  tags = tryParse(raw)\n      ?? tryParse(raw.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, ''))\n      ?? tryParse((raw.match(/\\{[\\s\\S]*\\}/) || [''])[0]);\n  // 4) สุดท้าย: แยกบรรทัดที่ขึ้นต้นด้วย - หรือ •\n  if (!Array.isArray(tags)) tags = raw.split('\\n').filter((l) => /^\\s*[-•*]\\s+/.test(l)).map((l) => l.replace(/^\\s*[-•*]\\s+/, ''));\n\n  const clean = [...new Set(tags\n    .filter((t) => typeof t === 'string')\n    .map((t) => t.replace(/[,\\n\"]/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 40))\n    .filter(Boolean))].slice(0, 5);\n\n  out.push({ json: { booking_id: src.booking_id, line_user_id: src.line_user_id || '', preference_tags: clean.join(',') || '-', raw }, pairedItem: { item: i } });\n});\nreturn out;\n"
+      },
+      "id": "dc38ca45-9a94-5a6c-ab40-afa0eae8d5fd",
+      "name": "Parse Tags",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "sheet",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1b3KoLtqp2wt_2rtRFNqdx0dkVoeujHMUR4QtwYwQwkA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Bookings",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "booking_id": "={{ $json.booking_id }}",
+            "preference_tags": "={{ $json.preference_tags }}",
+            "last_updated": "={{ $now.setZone('Asia/Bangkok').toISO() }}"
+          },
+          "matchingColumns": [
+            "booking_id"
+          ],
+          "schema": [
+            {
+              "id": "booking_id",
+              "displayName": "booking_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "preference_tags",
+              "displayName": "preference_tags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_updated",
+              "displayName": "last_updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "e9a58e09-cccf-594e-bfac-4171d2abafd5",
+      "name": "Save Tags",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "sheet",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1b3KoLtqp2wt_2rtRFNqdx0dkVoeujHMUR4QtwYwQwkA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Customers",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "line_user_id": "={{ $json.line_user_id }}",
+            "last_preference_tags": "={{ $json.preference_tags }}"
+          }
+        },
+        "matchingColumns": [
+          "line_user_id"
+        ],
+        "options": {}
+      },
+      "id": "update-customer-tags",
+      "name": "Update Customer Tags",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1980,
+        300
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": null,
+          "name": "Google Sheets SA"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Every Hour": {
+      "main": [
+        [
+          {
+            "node": "Read Bookings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Bookings": {
+      "main": [
+        [
+          {
+            "node": "Checked-out Without Tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checked-out Without Tags": {
+      "main": [
+        [
+          {
+            "node": "Read Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Messages": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Has Messages?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Messages?": {
+      "main": [
+        [
+          {
+            "node": "Summarize with Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize with Gemini": {
+      "main": [
+        [
+          {
+            "node": "Parse Tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Tags": {
+      "main": [
+        [
+          {
+            "node": "Save Tags",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update Customer Tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Bangkok"
+  },
+  "pinData": {}
+}
