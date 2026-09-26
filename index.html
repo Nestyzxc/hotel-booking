@@ -17,32 +17,32 @@
 
   <title>Sai Lan Hotel · จองห้องพักตรงกับโรงแรม</title>
   <meta name="description" content="จองห้องพัก Sai Lan Hotel ตรงกับโรงแรม ดูห้องว่างและราคาจริง รับใบยืนยันทาง LINE ทันที">
-  <meta name="theme-color" content="#16161A">
+  <meta name="theme-color" content="#0D0E11">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600&family=Noto+Serif+Thai:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600&family=Noto+Serif+Thai:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Tailwind CSS v4 (Play CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.13"></script>
   <!-- LINE LIFF SDK v2 -->
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
   <style type="text/tailwindcss">
     @theme {
-      --color-gold: #D4AF6A;
-      --color-gold-soft: #F3D98B;
-      --color-gold-deep: #B08D3E;
-      --color-ink: #16161A;
-      --color-ink-2: #1F1F25;
-      --color-ivory: #FAF7F0;
+      --color-gold: #D4AF37;
+      --color-gold-soft: #E8D39A;
+      --color-gold-deep: #8E6E24;
+      --color-ink: #0D0E11;
+      --color-ink-2: #14161D;
+      --color-ivory: #F9F8F6;
       --color-paper: #FFFFFF;
-      --color-line: #E7E0D1;
-      --color-muted: #6B665C;
+      --color-line: #E8E1D5;
+      --color-muted: #615C53;
       --color-ok: #2E7D4F;
       --color-bad: #B23A2E;
-      --font-sans: "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
-      --font-serif: "Noto Serif Thai", Georgia, serif;
+      --font-sans: "Plus Jakarta Sans", "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-serif: "Playfair Display", "Noto Serif Thai", Georgia, serif;
     }
   </style>
 
@@ -51,7 +51,7 @@
     @layer theme, base, components, utilities;
     :root { --topbar-h: 56px; }
     html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
-    body { background: #FAF7F0; }
+    body { background: #F9F8F6; }
     [hidden] { display: none !important; }
     #search.raised { z-index:45; }   /* เปิดตัวเลือกผู้เข้าพัก → อยู่เหนือแถบหัวข้อ */
     dialog { margin:auto; border:none; padding:0; background:transparent; color:inherit; }
@@ -70,26 +70,26 @@
       .ic-fill { fill: currentColor; }
 
       .card { background: #fff; border: 1px solid #ECE5D6; border-radius: 20px; box-shadow: 0 18px 40px -28px rgba(22,22,26,.35); }
-      .h2 { font-family: "Noto Serif Thai", Georgia, serif; font-weight: 600; font-size: 1.45rem; line-height: 1.3; color: #16161A; }
+      .h2 { font-family: "Playfair Display", "Noto Serif Thai", Georgia, serif; font-weight: 600; font-size: 1.45rem; line-height: 1.3; color: #0D0E11; }
       .section { scroll-margin-top: calc(var(--topbar-h) + 64px); }
 
       .btn-gold { display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
-        background: linear-gradient(135deg, #F3D98B 0%, #D4AF6A 45%, #B08D3E 100%); color:#16161A; font-weight:600;
+        background: linear-gradient(135deg, #E8D39A 0%, #D4AF37 45%, #8E6E24 100%); color:#0D0E11; font-weight:600;
         border-radius:14px; box-shadow: 0 12px 26px -12px rgba(176,141,62,.8); transition: filter .15s, transform .1s, opacity .15s; }
       .btn-gold:hover { filter: brightness(1.05); }
       .btn-gold:active { transform: translateY(1px); }
       .btn-gold:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; filter: grayscale(.3); }
       .btn-line { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; background:#06C755; color:#fff; font-weight:600; border-radius:14px; }
       .btn-line:hover { filter: brightness(1.05); }
-      .btn-outline { display:inline-flex; align-items:center; justify-content:center; gap:.45rem; border:1px solid #D9CFBC; border-radius:14px; color:#16161A; background:#fff; }
-      .btn-outline:hover { border-color:#B08D3E; }
-      .btn-ghost-dark { display:inline-flex; align-items:center; gap:.45rem; border:1px solid rgba(255,255,255,.22); border-radius:999px; color:#FAF7F0; }
+      .btn-outline { display:inline-flex; align-items:center; justify-content:center; gap:.45rem; border:1px solid #D9CFBC; border-radius:14px; color:#0D0E11; background:#fff; }
+      .btn-outline:hover { border-color:#8E6E24; }
+      .btn-ghost-dark { display:inline-flex; align-items:center; gap:.45rem; border:1px solid rgba(255,255,255,.22); border-radius:999px; color:#F9F8F6; }
       .btn-ghost-dark:hover { background: rgba(255,255,255,.08); }
 
-      .field { width:100%; font-size:16px; background:#fff; color:#16161A; border:1px solid #D9CFBC; border-radius:14px; padding:.75rem .9rem; min-height:3.1rem;
+      .field { width:100%; font-size:16px; background:#fff; color:#0D0E11; border:1px solid #D9CFBC; border-radius:14px; padding:.75rem .9rem; min-height:3.1rem;
         transition: border-color .15s, box-shadow .15s; }
       .field::placeholder { color:#A39E93; }
-      .field:focus, .field:focus-visible { outline:none; border-color:#B08D3E; box-shadow:0 0 0 3px rgba(212,175,106,.28); }
+      .field:focus, .field:focus-visible { outline:none; border-color:#8E6E24; box-shadow:0 0 0 3px rgba(212,175,55,.28); }
       .field[aria-invalid="true"] { border-color:#D2554A; box-shadow:0 0 0 3px rgba(210,85,74,.14); }
       .field:disabled { background:#F4F1EA; color:#8A857B; }
       .label { display:block; font-size:.8rem; color:#6B665C; margin-bottom:.35rem; font-weight:500; }
@@ -99,7 +99,7 @@
 
       .chip { display:inline-flex; align-items:center; gap:.35rem; border:1px solid #E7E0D1; background:#FBF9F4; color:#3D3A34; border-radius:999px; padding:.28rem .7rem; font-size:.8rem; }
       .chip-toggle { cursor:pointer; user-select:none; }
-      .chip-toggle[aria-pressed="true"] { background:#16161A; color:#F3D98B; border-color:#16161A; }
+      .chip-toggle[aria-pressed="true"] { background:#0D0E11; color:#E8D39A; border-color:#0D0E11; }
       .badge-ok { color:#2E7D4F; }
       .pill { display:inline-flex; align-items:center; gap:.3rem; border-radius:999px; padding:.18rem .6rem; font-size:.75rem; font-weight:600; }
 
@@ -121,20 +121,20 @@
       }
       /* Placeholder (ยังไม่ใส่รูป) */
       .ph { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.4rem; color:rgba(250,247,240,.85);
-        background: radial-gradient(120% 90% at 20% 0%, rgba(243,217,139,.28), transparent 55%), linear-gradient(145deg, #2C2822, #1B1A18); text-align:center; padding:1rem; }
+        background: radial-gradient(120% 90% at 20% 0%, rgba(232,211,154,.28), transparent 55%), linear-gradient(145deg, #2C2822, #1B1A18); text-align:center; padding:1rem; }
       .ph::after { content:""; position:absolute; inset:0; opacity:.14;
         background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.5) 0 1px, transparent 1px 14px); }
       .ph.ph-1 { background: radial-gradient(120% 90% at 80% 10%, rgba(120,170,190,.35), transparent 55%), linear-gradient(145deg, #1E2A30, #15191C); }
-      .ph.ph-2 { background: radial-gradient(120% 90% at 30% 100%, rgba(212,175,106,.35), transparent 55%), linear-gradient(145deg, #2E2519, #191612); }
+      .ph.ph-2 { background: radial-gradient(120% 90% at 30% 100%, rgba(212,175,55,.35), transparent 55%), linear-gradient(145deg, #2E2519, #191612); }
       .ph.ph-3 { background: radial-gradient(120% 90% at 70% 90%, rgba(140,160,120,.32), transparent 55%), linear-gradient(145deg, #232A20, #171A15); }
       .ph.ph-4 { background: radial-gradient(120% 90% at 10% 80%, rgba(190,130,110,.32), transparent 55%), linear-gradient(145deg, #2E221E, #191413); }
-      .ph .ph-label { font-family:"Noto Serif Thai", Georgia, serif; font-weight:600; font-size:1rem; position:relative; z-index:1; }
+      .ph .ph-label { font-family:"Playfair Display", "Noto Serif Thai", Georgia, serif; font-weight:600; font-size:1rem; position:relative; z-index:1; }
       .ph .ph-note { font-size:.7rem; opacity:.65; position:relative; z-index:1; }
-      .ph .ic { position:relative; z-index:1; width:1.6rem; height:1.6rem; color:#F3D98B; }
+      .ph .ic { position:relative; z-index:1; width:1.6rem; height:1.6rem; color:#E8D39A; }
       .g-count { position:absolute; right:.6rem; bottom:.6rem; z-index:2; }
 
       /* Rating badge */
-      .score { display:grid; place-items:center; min-width:3rem; height:3rem; border-radius:14px 14px 14px 4px; background:#D4AF6A; color:#16161A; font-weight:700; font-size:1.2rem; }
+      .score { display:grid; place-items:center; min-width:3rem; height:3rem; border-radius:14px 14px 14px 4px; background:#D4AF37; color:#0D0E11; font-weight:700; font-size:1.2rem; }
 
       /* Guests popover */
       .guests-pop { position:absolute; z-index:40; top:calc(100% + 6px); left:0; right:0; min-width:260px; padding:1rem;
@@ -150,8 +150,8 @@
 
       /* Tabs */
       .tab { white-space:nowrap; padding:.85rem .9rem; font-size:.9rem; color:#6B665C; border-bottom:2px solid transparent; }
-      .tab:hover { color:#16161A; }
-      .tab.active { color:#16161A; border-bottom-color:#D4AF6A; font-weight:600; }
+      .tab:hover { color:#0D0E11; }
+      .tab.active { color:#0D0E11; border-bottom-color:#D4AF37; font-weight:600; }
 
       /* Room media */
       .room-media { position:relative; background:#1B1A18; min-height:210px; }
@@ -173,11 +173,26 @@
 
       .price-old { text-decoration: line-through; color:#9A948A; }
       .rate-bar { height:8px; border-radius:99px; background:#EFEAE0; overflow:hidden; }
-      .rate-bar > i { display:block; height:100%; background:#D4AF6A; border-radius:99px; }
+      .rate-bar > i { display:block; height:100%; background:#D4AF37; border-radius:99px; }
 
       #bg { pointer-events:none; }
-      .hero-glow { background: radial-gradient(90% 70% at 85% 0%, rgba(212,175,106,.18), transparent 60%), radial-gradient(60% 60% at 0% 100%, rgba(212,175,106,.08), transparent 60%); }
+      .hero-glow { background: radial-gradient(90% 70% at 85% 0%, rgba(212,175,55,.18), transparent 60%), radial-gradient(60% 60% at 0% 100%, rgba(212,175,55,.08), transparent 60%); }
       .mobile-cta { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
+    }
+  </style>
+  <style>
+    @layer components {
+      .card { background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border:1px solid rgba(197,168,128,.3); border-radius:18px; box-shadow: 0 24px 60px -40px rgba(60,45,20,.5); }
+      .h2 { font-weight:500; font-size:1.9rem; line-height:1.2; letter-spacing:-.005em; }
+      .btn-gold { background: linear-gradient(115deg,#B8923A 0%,#D4AF37 35%,#F1DB9A 50%,#D4AF37 65%,#B8923A 100%); background-size:220% 100%; background-position:0 0; color:#1F1A10; letter-spacing:.02em; white-space:nowrap; box-shadow:0 14px 30px -14px rgba(184,146,58,.75); transition: background-position .8s ease, transform .1s, opacity .15s; }
+      .btn-gold:hover { background-position:100% 0; filter:none; }
+      .btn-outline { border-color: rgba(197,168,128,.6); } .btn-outline:hover { border-color:#D4AF37; background:#FFFCF4; }
+      .field { border-color:#E0D6C4; }
+      .tab { font-size:.85rem; letter-spacing:.06em; padding:1rem 1rem; }
+      .tab.active { border-bottom-color:#D4AF37; font-weight:500; }
+      .score { background: linear-gradient(135deg,#E8D39A,#D4AF37); font-family:"Playfair Display",serif; }
+      .eyebrow { display:flex; align-items:center; gap:.75rem; font-size:.68rem; letter-spacing:.24em; text-transform:uppercase; color:#D4AF37; }
+      .eyebrow::before { content:""; width:2.5rem; height:1px; background:#D4AF37; }
     }
   </style>
 </head>
@@ -191,8 +206,8 @@
   <header id="topbar" class="sticky top-0 z-50 h-[var(--topbar-h)] border-b border-white/10 bg-ink/95 text-ivory backdrop-blur">
     <div class="mx-auto flex h-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
       <a href="#" class="flex items-center gap-2.5" aria-label="หน้าแรก">
-        <span class="grid h-8 w-8 place-items-center rounded-lg border border-gold/50 font-serif text-sm font-bold text-gold">SL</span>
-        <span class="leading-tight"><span class="block text-[11px] tracking-[.3em] text-gold">SAI LAN</span><span class="block text-[10px] tracking-[.35em] text-ivory/60">HOTEL</span></span>
+        <img src="assets/logo-mark.png" alt="" class="h-9 w-auto" style="height:36px;width:auto">
+        <span class="leading-none"><span class="block font-serif text-[17px] font-semibold tracking-[.16em] text-ivory">SAI LAN</span><span class="mt-1 block text-[10px] tracking-[.08em] text-gold">โรงแรมสายแลนด์</span></span>
       </a>
       <button id="topbar-search" type="button" class="hidden min-w-0 items-center gap-2 truncate rounded-full border border-white/15 px-3 py-1.5 text-xs text-ivory/85 sm:inline-flex">
         <svg class="ic"><use href="#i-calendar-days"/></svg><span id="topbar-summary" class="truncate">เลือกวันที่เข้าพัก</span>
@@ -213,8 +228,9 @@
 
       <div class="mt-5 flex flex-wrap items-end justify-between gap-4">
         <div class="min-w-0">
-          <div id="hotel-stars" class="flex items-center gap-0.5 text-gold" aria-label=""></div>
-          <h1 id="hotel-name" class="mt-1 font-serif text-[1.9rem] font-semibold leading-tight sm:text-4xl">Sai Lan Hotel</h1>
+          <p class="eyebrow">Luxury Hospitality · Seamless Connectivity</p>
+          <div id="hotel-stars" class="mt-3 flex items-center gap-0.5 text-gold" aria-label=""></div>
+          <h1 id="hotel-name" class="mt-2 font-serif text-[2.4rem] font-normal leading-[1.05] tracking-[-.01em] sm:text-6xl">Sai Lan Hotel</h1>
           <p id="hotel-tagline" class="mt-1 text-[15px] text-ivory/75"></p>
           <a id="hotel-address" href="#location" class="mt-2 inline-flex max-w-full items-start gap-1.5 text-sm text-ivory/75 hover:text-gold-soft">
             <svg class="ic mt-0.5"><use href="#i-map-pin"/></svg><span id="hotel-address-text" class="min-w-0">—</span>
@@ -297,13 +313,13 @@
       <section id="direct" class="section" aria-labelledby="direct-title">
         <h2 id="direct-title" class="h2">จองตรงกับโรงแรม ได้มากกว่า</h2>
         <div class="mt-4 grid gap-3 sm:grid-cols-2">
-          <div class="card flex gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#FFF6DF] text-gold-deep"><svg class="ic"><use href="#i-badge-check"/></svg></span>
+          <div class="card flex gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-gold/45 text-gold-deep"><svg class="ic"><use href="#i-badge-check"/></svg></span>
             <div><p class="font-semibold">ไม่มีค่าธรรมเนียมตัวกลาง</p><p class="text-sm text-muted">ราคาที่เห็นคือราคาที่จ่ายจริง ชำระที่โรงแรมตอนเช็กอิน</p></div></div>
-          <div class="card flex gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#E9F5EE] text-ok"><svg class="ic"><use href="#i-calendar-check"/></svg></span>
+          <div class="card flex gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-gold/45 text-gold-deep"><svg class="ic"><use href="#i-calendar-check"/></svg></span>
             <div><p class="font-semibold">ยกเลิกฟรีตามนโยบาย</p><p id="direct-cancel" class="text-sm text-muted">ยกเลิกเองได้ในแชท LINE ไม่ต้องโทร</p></div></div>
-          <div class="card flex gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#E8F8EF] text-[#06C755]"><svg class="ic"><use href="#i-message-circle"/></svg></span>
+          <div class="card flex gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-gold/45 text-gold-deep"><svg class="ic"><use href="#i-message-circle"/></svg></span>
             <div><p class="font-semibold">ใบยืนยันและการดูแลทาง LINE</p><p class="text-sm text-muted">แจ้งปัญหาระหว่างเข้าพัก พนักงานได้รับแจ้งทันที</p></div></div>
-          <div class="card flex gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F6ECFA] text-[#7B4A94]"><svg class="ic"><use href="#i-gift"/></svg></span>
+          <div class="card flex gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-gold/45 text-gold-deep"><svg class="ic"><use href="#i-gift"/></svg></span>
             <div><p class="font-semibold">ดีลพิเศษเมื่อกลับมาพัก</p><p class="text-sm text-muted">ลูกค้าที่เคยพักจะได้รับโค้ดส่วนลดเฉพาะคนทาง LINE</p></div></div>
         </div>
       </section>
@@ -368,7 +384,7 @@
   <footer class="mt-6 bg-ink text-ivory/70">
     <div class="mx-auto flex max-w-6xl flex-wrap items-start justify-between gap-6 px-4 py-8 text-sm sm:px-6">
       <div>
-        <p class="font-serif text-lg text-ivory" id="footer-name">Sai Lan Hotel</p>
+        <img src="assets/logo-mark.png" alt="" class="mb-3 h-14 w-auto"><p class="font-serif text-2xl tracking-[.06em] text-ivory" id="footer-name">Sai Lan Hotel</p>
         <p id="footer-address" class="mt-1 max-w-md"></p>
         <p id="footer-phone" class="mt-1"></p>
       </div>
@@ -490,7 +506,7 @@
           <h3 class="font-serif text-lg font-semibold">ก่อนยืนยัน</h3>
           <ul id="co-policies" class="mt-2 space-y-1.5 text-sm text-muted"></ul>
           <label class="mt-4 flex items-start gap-3 text-sm">
-            <input id="consent" name="consent" type="checkbox" class="mt-1 h-4 w-4 accent-[#B08D3E]" aria-describedby="err-consent">
+            <input id="consent" name="consent" type="checkbox" class="mt-1 h-4 w-4 accent-[#8E6E24]" aria-describedby="err-consent">
             <span>ยินยอมให้โรงแรมใช้ข้อมูลนี้เพื่อการจอง และติดต่อฉันผ่าน LINE ระหว่างการเข้าพัก</span>
           </label>
           <p class="field-error" id="err-consent"></p>
@@ -916,7 +932,7 @@
         ${roomMedia(r, k)}
         <div class="grid gap-4 p-4 sm:p-5 md:grid-cols-[minmax(0,1fr)_170px]">
           <div class="min-w-0">
-            <h3 class="font-serif text-xl font-semibold">${esc(r.name)}</h3>
+            <h3 class="font-serif text-2xl font-medium">${esc(r.name)}</h3>
             <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">${facts.map((f) => `<li class="flex items-center gap-1.5">${f}</li>`).join('')}</ul>
             ${r.description ? `<p class="mt-2 text-sm text-muted">${esc(r.description)}</p>` : ''}
             ${am.length ? `<div class="mt-3 flex flex-wrap gap-1.5">${am.slice(0, 6).map((a) => `<span class="chip">${ic(amenityIcon(a), 'text-gold-deep')}${esc(a)}</span>`).join('')}${am.length > 6 ? `<span class="chip">+${am.length - 6}</span>` : ''}</div>` : ''}
@@ -1418,7 +1434,7 @@
     const camera = new THREE.PerspectiveCamera(60, size()[0] / size()[1], 0.1, 100);
     camera.position.z = 12;
     const base = new Float32Array(COUNT * 3), pos = new Float32Array(COUNT * 3), col = new Float32Array(COUNT * 3), seed = new Float32Array(COUNT);
-    const palette = ['#FFF4D6', '#F3D98B', '#D4AF6A', '#B08D3E'].map((c) => new THREE.Color(c));
+    const palette = ['#FFF4D6', '#E8D39A', '#D4AF37', '#8E6E24'].map((c) => new THREE.Color(c));
     for (let i = 0; i < COUNT; i++) {
       base[i * 3] = (Math.random() - 0.5) * 30; base[i * 3 + 1] = (Math.random() - 0.5) * 18; base[i * 3 + 2] = (Math.random() - 0.5) * 12;
       seed[i] = Math.random() * Math.PI * 2;
