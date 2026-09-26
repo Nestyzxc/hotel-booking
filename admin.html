@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+
+  <!-- ================================================================
+       CONFIG — แก้ค่าเดียว (URL สาธารณะของ n8n) ก่อนอัปโหลด
+       ไฟล์นี้ไม่มีรหัสใด ๆ: พนักงานกรอก "รหัสพนักงาน" (ค่าใน Credential "Staff Key" ของ n8n) ตอนเข้าสู่ระบบ
+       ================================================================ -->
+  <script>
+    const N8N_BASE_URL = 'https://gently-condition-lumpiness.ngrok-free.dev/webhook'; // ไม่ต้องมี / ปิดท้าย
+  </script>
+
+  <title>Sai Lan Hotel · ระบบหลังบ้าน</title>
+  <meta name="theme-color" content="#16161A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Noto+Serif+Thai:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      --color-gold: #D4AF6A;
+      --color-gold-soft: #F3D98B;
+      --color-gold-deep: #B08D3E;
+      --color-ink: #16161A;
+      --color-ink-2: #1F1F25;
+      --color-ivory: #FAF7F0;
+      --color-line: #E7E0D1;
+      --color-muted: #6B665C;
+      --color-ok: #2E7D4F;
+      --color-bad: #B23A2E;
+      --font-sans: "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-serif: "Noto Serif Thai", Georgia, serif;
+    }
+  </style>
+  <style>
+    @layer theme, base, components, utilities;
+    body { background: #F6F3EC; }
+    [hidden] { display: none !important; }
+    dialog { margin: auto; border: none; padding: 0; background: transparent; color: inherit; }
+    dialog::backdrop { background: rgba(8,8,10,.55); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } .spinner { animation-duration: .7s !important; } }
+    @layer components {
+      .ic { width: 1.1em; height: 1.1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .card { background: #fff; border: 1px solid #ECE5D6; border-radius: 18px; box-shadow: 0 14px 34px -26px rgba(22,22,26,.35); }
+      .h2 { font-family: "Noto Serif Thai", Georgia, serif; font-weight: 700; font-size: 1.15rem; color: #16161A; }
+      .field { width: 100%; font-size: 15px; background: #fff; color: #16161A; border: 1px solid #D9CFBC; border-radius: 12px; padding: .6rem .8rem; min-height: 2.75rem; }
+      .field:focus { outline: none; border-color: #B08D3E; box-shadow: 0 0 0 3px rgba(212,175,106,.28); }
+      .field:disabled { background: #F4F1EA; color: #8A857B; }
+      .label { display: block; font-size: .78rem; color: #6B665C; margin-bottom: .3rem; font-weight: 500; }
+      .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 12px; font-weight: 600; font-size: .875rem;
+        padding: .5rem .9rem; border: 1px solid transparent; transition: filter .15s, background .15s; white-space: nowrap; }
+      .btn:disabled { opacity: .5; cursor: not-allowed; }
+      .btn-gold { background: linear-gradient(135deg, #F3D98B 0%, #D4AF6A 45%, #B08D3E 100%); color: #16161A; }
+      .btn-gold:hover { filter: brightness(1.05); }
+      .btn-dark { background: #16161A; color: #FAF7F0; }
+      .btn-dark:hover { background: #2A2A31; }
+      .btn-outline { background: #fff; border-color: #D9CFBC; color: #16161A; }
+      .btn-outline:hover { border-color: #B08D3E; }
+      .btn-ok { background: #2E7D4F; color: #fff; }
+      .btn-ok:hover { filter: brightness(1.08); }
+      .btn-bad { background: #fff; border-color: #E7B4AE; color: #B23A2E; }
+      .btn-bad:hover { background: #FDECEA; }
+      .btn-sm { padding: .32rem .65rem; font-size: .8rem; border-radius: 10px; }
+      .badge { display: inline-flex; align-items: center; gap: .3rem; border-radius: 999px; padding: .12rem .55rem; font-size: .72rem; font-weight: 600; white-space: nowrap; }
+      .st-Confirmed { background: #E8F0FB; color: #2B5FA8; }
+      .st-Checked-in { background: #E9F5EE; color: #2E7D4F; }
+      .st-Need-Attention { background: #FDECEA; color: #B23A2E; }
+      .st-Checked-out { background: #F1EEE7; color: #5C5850; }
+      .st-Cancelled { background: #F4F1EA; color: #8A857B; text-decoration: line-through; }
+      .st-No-show { background: #FDF1E3; color: #A45A13; }
+      .hk-Clean { background: #E9F5EE; color: #2E7D4F; }
+      .hk-Dirty { background: #FDECEA; color: #B23A2E; }
+      .hk-Cleaning { background: #FEF5E1; color: #9A6412; }
+      .hk-Out-of-Order { background: #E5E7EB; color: #4B5563; }
+      .nav-btn { display: flex; align-items: center; gap: .7rem; width: 100%; padding: .65rem .8rem; border-radius: 12px; color: rgba(250,247,240,.72); font-size: .92rem; }
+      .nav-btn:hover { background: rgba(255,255,255,.06); color: #FAF7F0; }
+      .nav-btn[aria-current="page"] { background: rgba(212,175,106,.16); color: #F3D98B; font-weight: 600; }
+      .bnav-btn { display: flex; flex-direction: column; align-items: center; gap: .15rem; padding: .5rem .2rem; font-size: .68rem; color: rgba(250,247,240,.65); position: relative; }
+      .bnav-btn[aria-current="page"] { color: #F3D98B; }
+      .count { min-width: 1.25rem; height: 1.25rem; padding: 0 .3rem; border-radius: 999px; background: #B23A2E; color: #fff; font-size: .68rem; font-weight: 700; display: inline-grid; place-items: center; }
+      .kpi { padding: 1rem; }
+      .kpi .v { font-size: 1.6rem; font-weight: 700; line-height: 1.15; color: #16161A; }
+      .chip { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid #E2DACA; background: #fff; color: #3D3A34; border-radius: 999px; padding: .3rem .75rem; font-size: .8rem; cursor: pointer; white-space: nowrap; }
+      .chip[aria-pressed="true"] { background: #16161A; color: #F3D98B; border-color: #16161A; }
+      .spinner { width: 1rem; height: 1rem; border-radius: 999px; flex: none; border: 2px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; }
+      .row-hover:hover { background: #FBF8F1; }
+      .room-tile { text-align: left; border-radius: 16px; border: 1px solid #ECE5D6; background: #fff; padding: .8rem; transition: border-color .15s, box-shadow .15s; }
+      .room-tile:hover { border-color: #D4AF6A; box-shadow: 0 10px 24px -18px rgba(22,22,26,.5); }
+      .tl-wrap { overflow-x: auto; }
+      .tl { display: grid; grid-template-columns: 110px repeat(14, minmax(46px, 1fr)); min-width: 760px; font-size: .75rem; }
+      .tl > .h { position: sticky; top: 0; background: #FBF8F1; padding: .4rem .3rem; text-align: center; border-bottom: 1px solid #E7E0D1; color: #6B665C; }
+      .tl > .h.today { background: #FFF4D6; color: #8A6A1F; font-weight: 700; }
+      .tl .rl { position: sticky; left: 0; z-index: 2; background: #fff; padding: .45rem .5rem; border-bottom: 1px solid #F0EBE0; font-weight: 600; }
+      .tl .c { border-bottom: 1px solid #F0EBE0; border-left: 1px dashed #F0EBE0; min-height: 34px; }
+      .tl .c.today { background: #FFFBF0; }
+      .tl .bar { margin: 4px 2px; border-radius: 8px; padding: .2rem .45rem; font-size: .7rem; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; z-index: 1; cursor: pointer; text-align: left; }
+      .toast { animation: toast-in .2s ease-out; }
+      .drawer-sec { border-top: 1px solid #F0EBE0; padding: 1rem 1.25rem; }
+      .kv { display: grid; grid-template-columns: 7.5rem 1fr; gap: .35rem .75rem; font-size: .88rem; }
+      .kv dt { color: #6B665C; }
+      .switch { position: relative; width: 44px; height: 26px; border-radius: 999px; background: #D9D3C6; transition: background .15s; flex: none; }
+      .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 999px; background: #fff; transition: transform .15s; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+      .switch[aria-checked="true"] { background: #2E7D4F; }
+      .switch[aria-checked="true"]::after { transform: translateX(18px); }
+      .opt { border: 1px solid #E2DACA; border-radius: 14px; padding: .7rem .8rem; background: #fff; text-align: left; }
+      .opt[aria-pressed="true"] { border-color: #B08D3E; background: #FFFBF0; box-shadow: 0 0 0 2px rgba(212,175,106,.35); }
+      .opt:disabled { opacity: .45; cursor: not-allowed; }
+    }
+  </style>
+</head>
+
+<body class="min-h-dvh font-sans text-ink antialiased">
+<!-- Icons: Lucide (ISC License) https://lucide.dev -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none"><symbol id="i-arrow-right-left" viewBox="0 0 24 24"><path d="m16 3 4 4-4 4" /><path d="M20 7H4" /><path d="m8 21-4-4 4-4" /><path d="M4 17h16" /></symbol><symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M4.929 4.929 19.07 19.071" /></symbol><symbol id="i-bed" viewBox="0 0 24 24"><path d="M2 4v16" /><path d="M2 8h18a2 2 0 0 1 2 2v10" /><path d="M2 17h20" /><path d="M6 8v9" /></symbol><symbol id="i-bed-double" viewBox="0 0 24 24"><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8" /><path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" /><path d="M12 4v6" /><path d="M2 18h20" /></symbol><symbol id="i-brush-cleaning" viewBox="0 0 24 24"><path d="m16 22-1-4" /><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1" /><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z" /><path d="m8 22 1-4" /></symbol><symbol id="i-calendar-check" viewBox="0 0 24 24"><path d="M8 2v3" /><path d="M16 2v3" /><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="m9 15 2 2 4-4" /></symbol><symbol id="i-calendar-x" viewBox="0 0 24 24"><path d="M8 2v3" /><path d="M16 2v3" /><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="m14 13-4 4" /><path d="m10 13 4 4" /></symbol><symbol id="i-chart-column" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></symbol><symbol id="i-circle-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></symbol><symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="m16 9-5.5 5.5L8 12" /></symbol><symbol id="i-clipboard-list" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M12 11h4" /><path d="M12 16h4" /><path d="M8 11h.01" /><path d="M8 16h.01" /></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></symbol><symbol id="i-door-open" viewBox="0 0 24 24"><path d="M10 21H2" /><path d="M10 3H7a2 2 0 00-2 2v16" /><path d="M14 12h.01" /><path d="M19 21V5a2 2 0 00-1.675-1.974l-6.163-1.013A1 1 0 0010 3v18a1 1 0 001.124.992z" /><path d="M22 21h-3" /></symbol><symbol id="i-gift" viewBox="0 0 24 24"><path d="M12 7v14" /><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8" /><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5" /><rect x="3" y="7" width="18" height="4" rx="1" /></symbol><symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></symbol><symbol id="i-key-round" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" /><circle cx="16.5" cy="7.5" r=".5" fill="currentColor" /></symbol><symbol id="i-layout-dashboard" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></symbol><symbol id="i-log-in" viewBox="0 0 24 24"><path d="m10 17 5-5-5-5" /><path d="M15 12H3" /><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /></symbol><symbol id="i-log-out" viewBox="0 0 24 24"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></symbol><symbol id="i-mail" viewBox="0 0 24 24"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7" /><rect x="2" y="4" width="20" height="16" rx="2" /></symbol><symbol id="i-message-circle" viewBox="0 0 24 24"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></symbol><symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /><path d="m15 5 4 4" /></symbol><symbol id="i-phone" viewBox="0 0 24 24"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384" /></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14" /><path d="M12 5v14" /></symbol><symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></symbol><symbol id="i-rotate-ccw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></symbol><symbol id="i-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" /><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" /><path d="M7 3v4a1 1 0 0 0 1 1h7" /></symbol><symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></symbol><symbol id="i-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /><circle cx="12" cy="12" r="3" /></symbol><symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /><path d="M20 2v4" /><path d="M22 4h-4" /><circle cx="4" cy="20" r="2" /></symbol><symbol id="i-spray-can" viewBox="0 0 24 24"><path d="M3 3h.01" /><path d="M7 5h.01" /><path d="M11 7h.01" /><path d="M3 7h.01" /><path d="M7 9h.01" /><path d="M3 11h.01" /><rect width="4" height="4" x="15" y="5" /><path d="m19 9 2 2v10c0 .6-.4 1-1 1h-6c-.6 0-1-.4-1-1V11l2-2" /><path d="m13 14 8-2" /><path d="m13 19 8-2" /></symbol><symbol id="i-star" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" /></symbol><symbol id="i-ticket-percent" viewBox="0 0 24 24"><path d="M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" /><path d="M9 9h.01" /><path d="m15 9-6 6" /><path d="M15 15h.01" /></symbol><symbol id="i-trending-up" viewBox="0 0 24 24"><path d="M16 7h6v6" /><path d="m22 7-8.5 8.5-5-5L2 17" /></symbol><symbol id="i-triangle-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></symbol><symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></symbol><symbol id="i-user-x" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="17" x2="22" y1="8" y2="13" /><line x1="22" x2="17" y1="8" y2="13" /></symbol><symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><path d="M16 3.128a4 4 0 0 1 0 7.744" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><circle cx="9" cy="7" r="4" /></symbol><symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /></symbol><symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z" /></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></symbol></svg>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="login-view" class="grid min-h-dvh place-items-center bg-ink bg-[radial-gradient(80%_60%_at_80%_0%,#2a2620,transparent_60%)] px-4">
+  <form id="login-form" class="card w-full max-w-sm p-6" novalidate>
+    <div class="flex items-center gap-3">
+      <span class="grid h-10 w-10 place-items-center rounded-xl border border-gold/60 font-serif font-bold text-gold-deep">SL</span>
+      <div><p class="font-serif text-lg font-bold leading-tight" id="login-hotel">Sai Lan Hotel</p><p class="text-xs text-muted">ระบบหลังบ้านสำหรับพนักงาน</p></div>
+    </div>
+    <div class="mt-6 space-y-3">
+      <div><label class="label" for="staff-name">ชื่อพนักงาน (แสดงในบันทึกกิจกรรม)</label>
+        <input id="staff-name" class="field" maxlength="40" autocomplete="name" placeholder="เช่น นก (Front)"></div>
+      <div><label class="label" for="staff-key">รหัสพนักงาน</label>
+        <input id="staff-key" class="field" type="password" autocomplete="current-password" placeholder="Staff Key"></div>
+      <label class="flex items-center gap-2 text-sm text-muted"><input id="remember-name" type="checkbox" class="h-4 w-4 accent-[#B08D3E]" checked> จำชื่อพนักงานในเครื่องนี้</label>
+      <p id="login-error" class="min-h-[1.25rem] text-sm text-bad" role="alert"></p>
+      <button id="login-btn" type="submit" class="btn btn-gold w-full !py-3"><span class="spinner" hidden></span><span>เข้าสู่ระบบ</span></button>
+    </div>
+    <p class="mt-5 text-xs leading-relaxed text-muted">รหัสพนักงานคือค่า Value ใน Credential "Staff Key" ของ n8n · ระบบจะลืมรหัสเมื่อปิดแท็บ</p>
+  </form>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app-view" hidden class="min-h-dvh lg:grid lg:grid-cols-[236px_minmax(0,1fr)]">
+  <aside class="sticky top-0 hidden h-dvh flex-col bg-ink p-4 text-ivory lg:flex">
+    <div class="flex items-center gap-2.5 px-1">
+      <span class="grid h-9 w-9 place-items-center rounded-lg border border-gold/50 font-serif text-sm font-bold text-gold">SL</span>
+      <div class="min-w-0"><p class="truncate font-serif font-bold leading-tight" id="side-hotel">Sai Lan Hotel</p><p class="text-[11px] text-ivory/50">ระบบหลังบ้าน</p></div>
+    </div>
+    <nav class="mt-6 space-y-1" id="side-nav">
+      <button class="nav-btn" data-nav="dashboard"><svg class="ic"><use href="#i-layout-dashboard"/></svg>ภาพรวมวันนี้<span class="ml-auto count" data-count="today" hidden></span></button>
+      <button class="nav-btn" data-nav="bookings"><svg class="ic"><use href="#i-clipboard-list"/></svg>การจอง</button>
+      <button class="nav-btn" data-nav="rooms"><svg class="ic"><use href="#i-bed-double"/></svg>ห้องพัก / แม่บ้าน<span class="ml-auto count" data-count="dirty" hidden></span></button>
+      <button class="nav-btn" data-nav="new"><svg class="ic"><use href="#i-plus"/></svg>บันทึกการจอง</button>
+      <button class="nav-btn" data-nav="settings"><svg class="ic"><use href="#i-settings"/></svg>ตั้งค่าการแจ้งเตือน</button>
+    </nav>
+    <div class="mt-auto rounded-xl border border-white/10 p-3 text-sm">
+      <p class="text-[11px] text-ivory/50">เข้าสู่ระบบเป็น</p>
+      <p class="truncate font-semibold" id="side-staff">—</p>
+      <button type="button" data-logout class="mt-2 flex items-center gap-1.5 text-xs text-ivory/70 hover:text-gold-soft"><svg class="ic"><use href="#i-log-out"/></svg>ออกจากระบบ</button>
+    </div>
+  </aside>
+
+  <div class="min-w-0">
+    <header class="sticky top-0 z-30 border-b border-line bg-[#F6F3EC]/92 backdrop-blur">
+      <div class="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <div class="min-w-0">
+          <h1 id="page-title" class="truncate font-serif text-lg font-bold sm:text-xl">ภาพรวมวันนี้</h1>
+          <p id="page-sub" class="truncate text-xs text-muted">—</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="updated-at" class="hidden text-xs text-muted sm:inline"></span>
+          <button id="refresh-btn" type="button" class="btn btn-outline btn-sm" aria-label="รีเฟรชข้อมูล"><svg class="ic"><use href="#i-refresh-cw"/></svg><span class="hidden sm:inline">รีเฟรช</span></button>
+          <button type="button" data-logout class="btn btn-outline btn-sm lg:hidden" aria-label="ออกจากระบบ"><svg class="ic"><use href="#i-log-out"/></svg></button>
+        </div>
+      </div>
+      <div id="conn-warning" hidden class="border-t border-[#E7B4AE] bg-[#FDECEA] px-4 py-2 text-sm text-bad sm:px-6"></div>
+    </header>
+
+    <main class="px-4 pb-28 pt-4 sm:px-6 lg:pb-10">
+      <!-- ============ DASHBOARD ============ -->
+      <section data-view="dashboard" class="space-y-5">
+        <div id="kpis" class="grid grid-cols-2 gap-3 md:grid-cols-4"></div>
+        <div class="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+          <div class="space-y-5" id="today-lists"></div>
+          <div class="space-y-5">
+            <div class="card overflow-hidden"><div class="flex items-center justify-between p-4"><h2 class="h2">ห้องรอทำความสะอาด</h2>
+              <button class="btn btn-outline btn-sm" data-nav="rooms">ดูทุกห้อง</button></div><div id="dash-dirty"></div></div>
+            <div class="card overflow-hidden"><div class="p-4"><h2 class="h2">กิจกรรมล่าสุด</h2></div><ul id="dash-activity" class="divide-y divide-[#F0EBE0]"></ul></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ BOOKINGS ============ -->
+      <section data-view="bookings" hidden class="space-y-4">
+        <div class="card space-y-3 p-3 sm:p-4">
+          <div class="flex flex-wrap gap-2">
+            <div class="relative min-w-[220px] flex-1"><svg class="ic absolute left-3 top-1/2 -translate-y-1/2 text-muted"><use href="#i-search"/></svg>
+              <input id="bk-search" class="field !pl-9" placeholder="ค้นหา ชื่อ เบอร์ หมายเลขการจอง หรือเลขห้อง" autocomplete="off"></div>
+            <select id="bk-period" class="field !w-auto">
+              <option value="upcoming">กำลังจะมาถึง + เข้าพักอยู่</option><option value="today">เข้าพักวันนี้</option><option value="tomorrow">เข้าพักพรุ่งนี้</option>
+              <option value="7d">7 วันข้างหน้า</option><option value="past">ย้อนหลัง</option><option value="all">ทั้งหมด</option>
+            </select>
+            <select id="bk-source" class="field !w-auto"><option value="">ทุกช่องทาง</option><option value="direct">จองตรง (LINE/เว็บ/Walk-in/โทร)</option><option value="ota">OTA</option></select>
+          </div>
+          <div id="bk-status" class="flex gap-2 overflow-x-auto pb-1"></div>
+        </div>
+        <p id="bk-count" class="text-sm text-muted"></p>
+        <div class="card overflow-hidden">
+          <table class="hidden w-full text-sm md:table">
+            <thead class="bg-[#FBF8F1] text-left text-xs text-muted"><tr>
+              <th class="px-4 py-2.5 font-medium">การจอง / ผู้เข้าพัก</th><th class="px-3 py-2.5 font-medium">ห้อง</th><th class="px-3 py-2.5 font-medium">เข้าพัก</th>
+              <th class="px-3 py-2.5 font-medium">สถานะ</th><th class="px-3 py-2.5 text-right font-medium">ยอด</th><th class="px-3 py-2.5 font-medium">ช่องทาง</th></tr></thead>
+            <tbody id="bk-rows" class="divide-y divide-[#F0EBE0]"></tbody>
+          </table>
+          <ul id="bk-cards" class="divide-y divide-[#F0EBE0] md:hidden"></ul>
+        </div>
+      </section>
+
+      <!-- ============ ROOMS ============ -->
+      <section data-view="rooms" hidden class="space-y-5">
+        <div id="hk-summary" class="flex flex-wrap gap-2"></div>
+        <div id="room-floors" class="space-y-5"></div>
+        <div class="card overflow-hidden">
+          <div class="flex flex-wrap items-center justify-between gap-2 p-4"><h2 class="h2">ผังการเข้าพัก 14 วัน</h2>
+            <p class="flex flex-wrap gap-2 text-xs"><span class="badge st-Confirmed">ยืนยันแล้ว</span><span class="badge st-Checked-in">กำลังเข้าพัก</span><span class="badge st-Need-Attention">ต้องดูแล</span><span class="badge st-Checked-out">เช็กเอาต์แล้ว</span></p></div>
+          <div class="tl-wrap"><div id="timeline" class="tl"></div></div>
+        </div>
+      </section>
+
+      <!-- ============ NEW BOOKING ============ -->
+      <section data-view="new" hidden>
+        <form id="new-form" class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]" novalidate>
+          <div class="space-y-5">
+            <div class="card space-y-4 p-4 sm:p-5">
+              <h2 class="h2">ช่องทางและวันที่</h2>
+              <div><span class="label">ช่องทางการจอง</span><div id="nb-sources" class="flex flex-wrap gap-2"></div></div>
+              <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div><label class="label" for="nb-ci">เช็กอิน</label><input id="nb-ci" type="date" class="field"></div>
+                <div><label class="label" for="nb-co">เช็กเอาต์</label><input id="nb-co" type="date" class="field"></div>
+                <div><label class="label" for="nb-adults">ผู้ใหญ่</label><input id="nb-adults" type="number" min="1" max="10" value="2" class="field"></div>
+                <div><label class="label" for="nb-children">เด็ก</label><input id="nb-children" type="number" min="0" max="10" value="0" class="field"></div>
+              </div>
+              <div><span class="label">ประเภทห้อง (ว่างตามข้อมูลล่าสุด)</span><div id="nb-types" class="grid gap-2 sm:grid-cols-3"></div></div>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div><label class="label" for="nb-room">เลขห้อง</label><select id="nb-room" class="field"></select></div>
+                <div><label class="label" for="nb-price">ราคารวม (บาท) · เว้นว่าง = ราคาหน้าเว็บ</label><input id="nb-price" type="number" min="0" step="1" class="field" placeholder="เช่น ยอดจาก OTA"></div>
+              </div>
+            </div>
+            <div class="card space-y-3 p-4 sm:p-5">
+              <h2 class="h2">ข้อมูลผู้เข้าพัก</h2>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div class="sm:col-span-2"><label class="label" for="nb-name">ชื่อ-นามสกุล *</label><input id="nb-name" class="field" maxlength="100"></div>
+                <div><label class="label" for="nb-phone">เบอร์โทร</label><input id="nb-phone" class="field" maxlength="20" inputmode="tel" placeholder="ไม่บังคับ (OTA อาจไม่มี)"></div>
+                <div><label class="label" for="nb-email">อีเมล</label><input id="nb-email" class="field" maxlength="120" inputmode="email" placeholder="ไม่บังคับ"></div>
+                <div><label class="label" for="nb-arrival">เวลาที่คาดว่าจะถึง</label><input id="nb-arrival" class="field" maxlength="40" placeholder="เช่น 18:00-20:00"></div>
+                <div><label class="label" for="nb-requests">คำขอพิเศษ</label><input id="nb-requests" class="field" maxlength="500" placeholder="เช่น ห้องเงียบ, เตียงเสริม"></div>
+                <div class="sm:col-span-2"><label class="label" for="nb-note">บันทึกภายใน (แขกไม่เห็น)</label><input id="nb-note" class="field" maxlength="300" placeholder="เช่น หมายเลขการจอง Agoda 123456"></div>
+              </div>
+            </div>
+          </div>
+          <aside class="space-y-4">
+            <div class="card p-4 sm:p-5 xl:sticky xl:top-24">
+              <h2 class="h2">สรุป</h2>
+              <dl id="nb-summary" class="kv mt-3"></dl>
+              <label class="mt-4 flex items-start gap-2 text-sm"><input id="nb-now" type="checkbox" class="mt-0.5 h-4 w-4 accent-[#B08D3E]"><span>เช็กอินทันที (Walk-in เข้าพักวันนี้)</span></label>
+              <label class="mt-2 flex items-start gap-2 text-sm"><input id="nb-paid" type="checkbox" class="mt-0.5 h-4 w-4 accent-[#B08D3E]"><span>ชำระเงินแล้ว</span></label>
+              <p id="nb-error" class="mt-3 min-h-[1.25rem] text-sm text-bad" role="alert"></p>
+              <button id="nb-submit" type="submit" class="btn btn-gold mt-1 w-full !py-3"><span class="spinner" hidden></span><span>บันทึกการจอง</span></button>
+              <p class="mt-2 text-xs text-muted">ระบบตรวจห้องว่างซ้ำก่อนบันทึก และแจ้งกลุ่มแม่บ้านให้เตรียมห้อง (ถ้าเปิดไว้)</p>
+            </div>
+          </aside>
+        </form>
+      </section>
+
+      <!-- ============ SETTINGS ============ -->
+      <section data-view="settings" hidden class="max-w-3xl space-y-5">
+        <div class="card overflow-hidden">
+          <div class="p-4 sm:p-5"><h2 class="h2">การแจ้งเตือนทาง LINE</h2>
+            <p class="mt-1 text-sm text-muted">การส่งเข้ากลุ่มนับโควตาตามจำนวนสมาชิกในกลุ่ม (แพ็กเกจฟรี 300 ข้อความ/เดือน) ปิดรายการที่ไม่จำเป็นได้ที่นี่</p></div>
+          <ul id="settings-list" class="divide-y divide-[#F0EBE0]"></ul>
+        </div>
+        <div class="card p-4 sm:p-5">
+          <h2 class="h2">กลุ่ม LINE ของโรงแรม</h2>
+          <div id="group-status" class="mt-3 grid gap-3 sm:grid-cols-2"></div>
+          <p class="mt-3 text-sm text-muted">วิธีตั้งกลุ่ม: เชิญบัญชี LINE OA ของโรงแรมเข้ากลุ่ม → บอทจะถามว่ากลุ่มนี้ใช้ทำอะไร → กดปุ่ม "กลุ่มแม่บ้าน" หรือ "กลุ่มพนักงาน"</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <nav id="bottom-nav" class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-white/10 bg-ink pb-[env(safe-area-inset-bottom)] lg:hidden">
+    <button class="bnav-btn" data-nav="dashboard"><svg class="ic !h-5 !w-5"><use href="#i-layout-dashboard"/></svg>วันนี้<span class="count absolute right-3 top-1" data-count="today" hidden></span></button>
+    <button class="bnav-btn" data-nav="bookings"><svg class="ic !h-5 !w-5"><use href="#i-clipboard-list"/></svg>การจอง</button>
+    <button class="bnav-btn" data-nav="rooms"><svg class="ic !h-5 !w-5"><use href="#i-bed-double"/></svg>ห้องพัก<span class="count absolute right-3 top-1" data-count="dirty" hidden></span></button>
+    <button class="bnav-btn" data-nav="new"><svg class="ic !h-5 !w-5"><use href="#i-plus"/></svg>จองใหม่</button>
+    <button class="bnav-btn" data-nav="settings"><svg class="ic !h-5 !w-5"><use href="#i-settings"/></svg>ตั้งค่า</button>
+  </nav>
+</div>
+
+<!-- Drawer: รายละเอียดการจอง -->
+<div id="drawer-backdrop" hidden class="fixed inset-0 z-40 bg-black/40"></div>
+<aside id="drawer" hidden class="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col bg-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="dr-title"></aside>
+
+<!-- Modal (ฟอร์ม) + Confirm (ซ้อนบนฟอร์มได้) -->
+<dialog id="modal" class="w-[min(94vw,30rem)]"><div id="modal-body" class="card p-5"></div></dialog>
+<dialog id="confirm" class="w-[min(92vw,26rem)]"><div id="confirm-body" class="card p-5"></div></dialog>
+
+<!-- Toasts -->
+<div id="toasts" class="pointer-events-none fixed bottom-20 right-4 z-[60] flex w-[min(92vw,24rem)] flex-col gap-2 lg:bottom-6" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+  /*ICONS: check x circle-check circle-alert triangle-alert user phone mail message-circle clock sparkles door-open log-out key-round
+           brush-cleaning spray-can wrench calendar-check calendar-x arrow-right-left pencil ban user-x trending-up wallet star
+           chart-column gift users house bed ticket-percent info save rotate-ccw log-in */
+  const API = N8N_BASE_URL.replace(/\/+$/, '') + '/admin';
+  const REFRESH_MS = 60000, TIMEOUT_MS = 25000;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const ic = (n, cls = '') => `<svg class="ic ${cls}"><use href="#i-${n}"/></svg>`;
+  const baht = (n) => '฿' + Math.round(Number(n) || 0).toLocaleString('en-US');
+  const num = (v, d = 0) => { const x = Number(String(v ?? '').replace(/,/g, '')); return String(v ?? '').trim() !== '' && Number.isFinite(x) ? x : d; };
+  const store = {
+    get(k, s = sessionStorage) { try { return s.getItem(k) || ''; } catch { return ''; } },
+    set(k, v, s = sessionStorage) { try { v ? s.setItem(k, v) : s.removeItem(k); } catch { /* storage ปิดอยู่ */ } },
+  };
+
+  /* ---------- วันที่ ---------- */
+  const addDays = (ymd, n) => { const [y, m, d] = ymd.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+  const diffDays = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000);
+  const isYmd = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+  const fmt = (ymd, o = { day: 'numeric', month: 'short' }) => {
+    if (!isYmd(ymd)) return '—';
+    const [y, m, d] = ymd.split('-').map(Number);
+    return new Intl.DateTimeFormat('th-TH', { ...o, timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, d)));
+  };
+  const fmtLong = (ymd) => fmt(ymd, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const fmtTs = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? String(iso || '') : new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }).format(d); };
+  const ago = (iso) => { const s = (Date.now() - new Date(iso).getTime()) / 1000; if (!Number.isFinite(s)) return ''; if (s < 60) return 'เมื่อสักครู่'; if (s < 3600) return `${Math.floor(s / 60)} นาทีที่แล้ว`; if (s < 86400) return `${Math.floor(s / 3600)} ชม.ที่แล้ว`; return fmtTs(iso); };
+
+  /* ---------- ข้อความ/สถานะ ---------- */
+  const ACTIVE = ['Confirmed', 'Checked-in', 'Need Attention'], INHOUSE = ['Checked-in', 'Need Attention'];
+  const ST = { 'Confirmed': 'ยืนยันแล้ว', 'Checked-in': 'กำลังเข้าพัก', 'Need Attention': 'ต้องดูแลด่วน', 'Checked-out': 'เช็กเอาต์แล้ว', 'Cancelled': 'ยกเลิก', 'No-show': 'ไม่มาเข้าพัก' };
+  const HK = { 'Clean': 'พร้อมเข้าพัก', 'Dirty': 'รอทำความสะอาด', 'Cleaning': 'กำลังทำความสะอาด', 'Out of Order': 'ปิดปรับปรุง' };
+  const HK_ICON = { 'Clean': 'circle-check', 'Dirty': 'spray-can', 'Cleaning': 'brush-cleaning', 'Out of Order': 'wrench' };
+  const SRC = { liff: 'LINE', web: 'เว็บไซต์', 'Walk-in': 'Walk-in', Phone: 'โทรศัพท์', Agoda: 'Agoda', 'Booking.com': 'Booking.com', 'Trip.com': 'Trip.com', Expedia: 'Expedia', Other: 'อื่น ๆ' };
+  const OTA = ['Agoda', 'Booking.com', 'Trip.com', 'Expedia'];
+  const PAY = { Unpaid: 'ยังไม่ชำระ', Deposit: 'มัดจำแล้ว', Paid: 'ชำระแล้ว' };
+  const stBadge = (s) => `<span class="badge st-${esc(String(s).replace(/ /g, '-'))}">${esc(ST[s] || s)}</span>`;
+  const hkBadge = (s) => `<span class="badge hk-${esc(String(s).replace(/ /g, '-'))}">${ic(HK_ICON[s] || 'info')}${esc(HK[s] || s)}</span>`;
+  const guests = (b) => `${num(b.adults, 1)} ผู้ใหญ่${num(b.children) ? ` · ${num(b.children)} เด็ก` : ''}`;
+
+  /* ---------- State ---------- */
+  let S = null, view = 'dashboard', drawerId = null, drawerMode = 'view', loadingNow = false, timer = null;
+  const filt = { q: '', status: '', period: 'upcoming', source: '' };
+  const nb = { source: 'Walk-in', type: '' };
+  const staff = () => store.get('sl_staff_name', sessionStorage) || store.get('sl_staff_name', localStorage) || 'พนักงาน';
+
+  /* =========================================================
+     API
+     ========================================================= */
+  async function api(method, body) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(API, { method, signal: ctrl.signal, headers: {
+        'X-Staff-Key': store.get('sl_staff_key'), 'ngrok-skip-browser-warning': '1', ...(body ? { 'Content-Type': 'application/json' } : {}) },
+        body: body ? JSON.stringify(body) : undefined });
+      const text = await res.text();
+      let data = null; try { data = JSON.parse(text); } catch { /* ไม่ใช่ JSON */ }
+      return { ok: res.ok, status: res.status, data };
+    } catch (err) {
+      return { ok: false, status: 0, data: null, error: err?.name === 'AbortError' ? 'timeout' : 'network' };
+    } finally { clearTimeout(t); }
+  }
+  const connMsg = (r) => r.status === 403 ? 'รหัสพนักงานไม่ถูกต้อง'
+    : r.status === 404 ? 'ไม่พบระบบหลังบ้าน (Workflow S ยังไม่ได้ Publish หรือ URL ผิด)'
+    : r.error === 'timeout' ? 'n8n ตอบช้าเกินไป ลองใหม่อีกครั้ง'
+    : r.status === 0 ? 'เชื่อมต่อ n8n ไม่ได้ (ตรวจว่า n8n และ ngrok เปิดอยู่ และตั้ง Allowed Origins ถูกต้อง)'
+    : (r.data && r.data.message) || `เกิดข้อผิดพลาด (HTTP ${r.status})`;
+
+  async function load({ quiet = false } = {}) {
+    if (loadingNow) return;
+    loadingNow = true;
+    $('#refresh-btn').disabled = true;
+    const r = await api('GET');
+    loadingNow = false; $('#refresh-btn').disabled = false;
+    if (r.status === 403) { logout('รหัสพนักงานไม่ถูกต้อง หรือถูกเปลี่ยนแล้ว กรุณาเข้าสู่ระบบใหม่'); return false; }
+    if (!r.ok || !r.data?.success) {
+      $('#conn-warning').hidden = false;
+      $('#conn-warning').textContent = connMsg(r) + (S ? ' · แสดงข้อมูลล่าสุดที่โหลดได้' : '');
+      if (!quiet) toast(connMsg(r), 'bad');
+      return false;
+    }
+    $('#conn-warning').hidden = true;
+    S = normalize(r.data);
+    $('#updated-at').textContent = 'อัปเดต ' + new Intl.DateTimeFormat('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }).format(new Date());
+    renderAll();
+    return true;
+  }
+  function normalize(d) {
+    d.bookings = (d.bookings || []).map((b) => ({ ...b, room_number: String(b.room_number ?? ''), adults: num(b.adults, 1), children: num(b.children),
+      price_total: num(b.price_total), discount: num(b.discount), nights: num(b.nights) || Math.max(0, diffDays(b.check_in, b.check_out)) }));
+    d.rooms = (d.rooms || []).map((r) => ({ ...r, room_number: String(r.room_number) }));
+    return d;
+  }
+
+  async function act(action, payload = {}, { okMsg, confirmForce = true } = {}) {
+    const r = await api('POST', { action, staff: staff(), ...payload });
+    if (r.status === 403) { logout('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่'); return null; }
+    if (r.status === 409 && r.data?.need_force && confirmForce) {
+      const yes = await confirmBox({ title: 'ห้องยังไม่พร้อม', message: r.data.message, okLabel: 'ยืนยัน ทำต่อ', tone: 'bad' });
+      return yes ? act(action, { ...payload, force: true }, { okMsg, confirmForce: false }) : null;
+    }
+    if (!r.ok || !r.data?.success) { toast(connMsg(r), 'bad'); return null; }
+    toast(okMsg || r.data.message, 'ok');
+    if (r.data.warning) toast(r.data.warning, 'warn');
+    if (r.data.line_warning) toast(r.data.line_warning, 'warn');
+    await load({ quiet: true });
+    return r.data;
+  }
+
+  /* =========================================================
+     Login / logout
+     ========================================================= */
+  $('#staff-name').value = store.get('sl_staff_name', localStorage);
+  $('#login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = $('#staff-name').value.trim().slice(0, 40), key = $('#staff-key').value;
+    if (!name || !key) { $('#login-error').textContent = 'กรอกชื่อพนักงานและรหัสพนักงาน'; return; }
+    const btn = $('#login-btn'); btn.disabled = true; btn.querySelector('.spinner').hidden = false; $('#login-error').textContent = '';
+    store.set('sl_staff_key', key); store.set('sl_staff_name', name);
+    store.set('sl_staff_name', $('#remember-name').checked ? name : '', localStorage);
+    const r = await api('GET');
+    btn.disabled = false; btn.querySelector('.spinner').hidden = true;
+    if (!r.ok || !r.data?.success) { store.set('sl_staff_key', ''); $('#login-error').textContent = connMsg(r); return; }
+    S = normalize(r.data);
+    enterApp();
+  });
+  function enterApp() {
+    $('#login-view').hidden = true; $('#app-view').hidden = false;
+    $('#side-staff').textContent = staff();
+    $('#updated-at').textContent = 'อัปเดต ' + new Intl.DateTimeFormat('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }).format(new Date());
+    go(location.hash.slice(1) || 'dashboard', false);
+    renderAll();
+    clearInterval(timer);
+    timer = setInterval(() => { if (!document.hidden && !$('#modal').open && !$('#confirm').open && view !== 'new') load({ quiet: true }); }, REFRESH_MS);
+  }
+  function logout(msg = '') {
+    clearInterval(timer); store.set('sl_staff_key', ''); S = null; closeDrawer();
+    $('#app-view').hidden = true; $('#login-view').hidden = false; $('#staff-key').value = '';
+    $('#login-error').textContent = msg;
+  }
+  $$('[data-logout]').forEach((b) => b.addEventListener('click', () => logout()));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && S && drawerMode !== 'edit') load({ quiet: true }); });
+  $('#refresh-btn').addEventListener('click', () => load());
+
+  /* =========================================================
+     Navigation
+     ========================================================= */
+  const TITLES = { dashboard: 'ภาพรวมวันนี้', bookings: 'การจอง', rooms: 'ห้องพักและงานแม่บ้าน', new: 'บันทึกการจอง (Walk-in / โทร / OTA)', settings: 'ตั้งค่าการแจ้งเตือน' };
+  function go(v, push = true) {
+    if (!TITLES[v]) v = 'dashboard';
+    view = v;
+    $$('[data-view]').forEach((s) => { s.hidden = s.dataset.view !== v; });
+    $$('.nav-btn, .bnav-btn').forEach((b) => (b.dataset.nav === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
+    $('#page-title').textContent = TITLES[v];
+    if (push) history.replaceState(null, '', '#' + v);
+    if (S) renderView();
+    scrollTo(0, 0);
+  }
+  document.addEventListener('click', (e) => {
+    const n = e.target.closest('[data-nav]'); if (n) { e.preventDefault(); go(n.dataset.nav); return; }
+    const o = e.target.closest('[data-open]'); if (o) { e.preventDefault(); openDrawer(o.dataset.open); return; }
+    const a = e.target.closest('[data-act]'); if (a) { e.preventDefault(); quickAction(a.dataset.act, a.dataset.id, a); }
+  });
+
+  /* =========================================================
+     Helpers on snapshot
+     ========================================================= */
+  const T = () => S.today;
+  const byId = (id) => S.bookings.find((b) => b.booking_id === id);
+  const roomByNo = (n) => S.rooms.find((r) => r.room_number === String(n));
+  const typeName = (rt) => (S.room_types.find((t) => t.room_type === rt) || {}).name || rt || '—';
+  const occupant = (no) => S.bookings.find((b) => INHOUSE.includes(b.status) && b.room_number === String(no));
+  const nextArrival = (no) => S.bookings.filter((b) => b.status === 'Confirmed' && b.room_number === String(no) && b.check_in >= T()).sort((a, c) => a.check_in.localeCompare(c.check_in))[0];
+  const overlaps = (a1, a2, b1, b2) => a1 < b2 && b1 < a2;
+  function availability(ci, co, exceptId = '') {
+    const busy = S.bookings.filter((b) => ACTIVE.includes(b.status) && b.booking_id !== exceptId && overlaps(ci, co, b.check_in, b.check_out));
+    const busyRooms = new Set(busy.filter((b) => b.room_number).map((b) => b.room_number));
+    const out = {};
+    for (const t of S.room_types) {
+      const units = S.rooms.filter((r) => r.room_type === t.room_type && r.hk_status !== 'Out of Order');
+      const free = units.filter((r) => !busyRooms.has(r.room_number));
+      const unassigned = busy.filter((b) => !b.room_number && b.room_type === t.room_type).length;
+      out[t.room_type] = { free, available: Math.max(0, free.length - unassigned) };
+    }
+    return out;
+  }
+  function quote(rt, ci, co) {
+    const t = S.room_types.find((x) => x.room_type === rt); if (!t) return 0;
+    let sum = 0;
+    for (let d = ci; d < co; d = addDays(d, 1)) { const wd = new Date(d + 'T00:00:00Z').getUTCDay(); sum += (wd === 5 || wd === 6) && t.weekend_price ? t.weekend_price : t.price; }
+    return sum;
+  }
+  const lists = () => {
+    const t = T();
+    return {
+      arrivals: S.bookings.filter((b) => b.status === 'Confirmed' && b.check_in === t).sort((a, c) => (a.room_number || 'z').localeCompare(c.room_number || 'z', 'en', { numeric: true })),
+      overdue: S.bookings.filter((b) => b.status === 'Confirmed' && b.check_in < t),
+      departures: S.bookings.filter((b) => INHOUSE.includes(b.status) && b.check_out <= t).sort((a, c) => a.room_number.localeCompare(c.room_number, 'en', { numeric: true })),
+      inhouse: S.bookings.filter((b) => INHOUSE.includes(b.status)),
+      issues: S.bookings.filter((b) => b.status === 'Need Attention'),
+      dirty: S.rooms.filter((r) => ['Dirty', 'Cleaning'].includes(r.hk_status)),
+    };
+  };
+
+  /* =========================================================
+     Render
+     ========================================================= */
+  function renderAll() {
+    const name = S.hotel?.name || 'Sai Lan Hotel';
+    document.title = `${name} · ระบบหลังบ้าน`;
+    $('#side-hotel').textContent = name; $('#login-hotel').textContent = name;
+    $('#page-sub').textContent = `${fmtLong(T())} · ${staff()}`;
+    const L = lists();
+    const todo = L.arrivals.length + L.departures.length + L.issues.length + L.overdue.length;
+    $$('[data-count="today"]').forEach((el) => { el.hidden = !todo; el.textContent = todo; });
+    $$('[data-count="dirty"]').forEach((el) => { el.hidden = !L.dirty.length; el.textContent = L.dirty.length; });
+    renderView();
+    if (drawerId && drawerMode === 'view') renderDrawer();
+  }
+  function renderView() {
+    ({ dashboard: renderDashboard, bookings: renderBookings, rooms: renderRooms, new: renderNew, settings: renderSettings })[view]();
+  }
+
+  /* ---------- Dashboard ---------- */
+  function renderDashboard() {
+    const t = T(), L = lists();
+    const sellable = S.rooms.filter((r) => r.hk_status !== 'Out of Order').length;
+    const tonight = S.bookings.filter((b) => ACTIVE.includes(b.status) && b.check_in <= t && b.check_out > t).length;
+    const occ = sellable ? Math.round((tonight / sellable) * 100) : 0;
+    const ym = t.slice(0, 7);
+    const monthRev = S.bookings.filter((b) => b.check_in.startsWith(ym) && !['Cancelled', 'No-show'].includes(b.status)).reduce((s, b) => s + b.price_total, 0);
+    const since30 = addDays(t, -30);
+    const rated = S.bookings.filter((b) => num(b.rating) >= 1 && b.check_in >= since30);
+    const avg = rated.length ? (rated.reduce((s, b) => s + num(b.rating), 0) / rated.length).toFixed(1) : '—';
+    const recent = S.bookings.filter((b) => String(b.created_at).slice(0, 10) >= since30 && !['Cancelled'].includes(b.status));
+    const ota = recent.filter((b) => OTA.includes(b.source)).length;
+    const directPct = recent.length ? Math.round(((recent.length - ota) / recent.length) * 100) : 0;
+    const offers = (S.offers || []).filter((o) => String(o.sent_at).slice(0, 10) >= since30);
+    const conv = offers.filter((o) => o.converted_booking_id).length;
+    const k = (icon, label, value, sub, tone = '') => `<div class="card kpi"><p class="flex items-center gap-1.5 text-xs text-muted">${ic(icon, tone)}${label}</p>
+      <p class="v mt-1">${value}</p><p class="mt-0.5 text-xs text-muted">${sub}</p></div>`;
+    $('#kpis').innerHTML = [
+      k('log-in', 'เข้าพักวันนี้', L.arrivals.length, `เช็กเอาต์วันนี้ ${L.departures.length}`, 'text-[#2B5FA8]'),
+      k('house', 'กำลังเข้าพัก', L.inhouse.length, `คืนนี้เต็ม ${occ}% (${tonight}/${sellable} ห้อง)`, 'text-ok'),
+      k('spray-can', 'ห้องรอทำความสะอาด', L.dirty.length, `ปิดปรับปรุง ${S.rooms.length - sellable}`, 'text-bad'),
+      k('triangle-alert', 'เรื่องที่แขกแจ้ง', L.issues.length, L.overdue.length ? `ค้างเช็กอิน ${L.overdue.length} รายการ` : 'ไม่มีค้างเช็กอิน', 'text-bad'),
+      k('wallet', 'ยอดจองเดือนนี้', baht(monthRev), 'ตามวันเข้าพัก ไม่รวมยกเลิก', 'text-gold-deep'),
+      k('star', 'คะแนนเฉลี่ย 30 วัน', avg, `${rated.length} คะแนน`, 'text-gold-deep'),
+      k('chart-column', 'สัดส่วนจองตรง 30 วัน', recent.length ? directPct + '%' : '—', `OTA ${ota} จาก ${recent.length} การจอง`, 'text-ok'),
+      k('gift', 'ดีลจองตรง 30 วัน', `${conv}/${offers.length}`, 'กลับมาจอง / ส่งดีล', 'text-[#7B4A94]'),
+    ].join('');
+
+    const item = (b, actions, extra = '') => `<li class="row-hover flex flex-wrap items-center gap-3 px-4 py-3">
+      <button type="button" data-open="${esc(b.booking_id)}" class="min-w-0 flex-1 text-left">
+        <p class="truncate font-semibold">${esc(b.full_name)} ${b.status !== 'Confirmed' ? stBadge(b.status) : ''}</p>
+        <p class="truncate text-xs text-muted">${b.room_number ? 'ห้อง ' + esc(b.room_number) : '<span class="text-bad">ยังไม่ระบุห้อง</span>'} · ${esc(typeName(b.room_type))} · ${guests(b)} · ${esc(b.booking_id)} ${extra}</p>
+      </button><div class="flex shrink-0 gap-1.5">${actions}</div></li>`;
+    const block = (title, icon, rows, empty) => `<div class="card overflow-hidden"><div class="flex items-center gap-2 p-4 pb-2">${ic(icon, 'text-gold-deep')}<h2 class="h2">${title}</h2>
+      <span class="ml-auto text-sm text-muted">${rows.length}</span></div>${rows.length ? `<ul class="divide-y divide-[#F0EBE0]">${rows.join('')}</ul>` : `<p class="px-4 pb-4 text-sm text-muted">${empty}</p>`}</div>`;
+    const tag = (b) => (b.arrival_time ? ` · ถึง ${esc(b.arrival_time)}` : '') + (b.special_requests ? ` · <span class="text-gold-deep">${esc(b.special_requests)}</span>` : '');
+    $('#today-lists').innerHTML = [
+      L.issues.length ? block('เรื่องที่แขกแจ้ง', 'triangle-alert', L.issues.map((b) => item(b, `<button class="btn btn-ok btn-sm" data-act="resolve" data-id="${esc(b.booking_id)}">${ic('check')}ปิดเรื่อง</button>`, `· <b class="text-bad">${esc(b.issue_category || '-')}</b>${b.rating ? ` · คะแนน ${esc(b.rating)}/5` : ''}`)), '') : '',
+      block('เข้าพักวันนี้', 'log-in', L.arrivals.map((b) => item(b, `<button class="btn btn-dark btn-sm" data-act="checkin" data-id="${esc(b.booking_id)}">${ic('key-round')}เช็กอิน</button>`, tag(b))), 'ไม่มีแขกเข้าพักวันนี้'),
+      block('เช็กเอาต์วันนี้', 'door-open', L.departures.map((b) => item(b, `<button class="btn btn-gold btn-sm" data-act="checkout" data-id="${esc(b.booking_id)}">${ic('door-open')}เช็กเอาต์</button>`, b.check_out < t ? '· <b class="text-bad">เลยกำหนด</b>' : '')), 'ไม่มีแขกเช็กเอาต์วันนี้'),
+      L.overdue.length ? block('ค้างเช็กอิน (เลยวันเข้าพักแล้ว)', 'calendar-x', L.overdue.map((b) => item(b,
+        `<button class="btn btn-dark btn-sm" data-act="checkin" data-id="${esc(b.booking_id)}">เช็กอิน</button><button class="btn btn-bad btn-sm" data-act="noshow" data-id="${esc(b.booking_id)}">ไม่มา</button>`, `· เข้าพัก ${fmt(b.check_in)}`)), '') : '',
+    ].join('');
+
+    $('#dash-dirty').innerHTML = L.dirty.length ? `<ul class="divide-y divide-[#F0EBE0]">${L.dirty.map((r) => {
+      const n = nextArrival(r.room_number); const occ2 = occupant(r.room_number);
+      return `<li class="flex items-center gap-3 px-4 py-3"><span class="w-12 font-serif text-lg font-bold">${esc(r.room_number)}</span>
+        <div class="min-w-0 flex-1"><p class="text-sm">${hkBadge(r.hk_status)} <span class="text-xs text-muted">${esc(r.hk_note || '')}</span></p>
+        <p class="truncate text-xs ${n && n.check_in === t ? 'font-semibold text-bad' : 'text-muted'}">${occ2 ? 'มีแขกพักอยู่' : n ? `แขกถัดไป ${n.check_in === t ? 'วันนี้' : fmt(n.check_in)} · ${esc(n.full_name)}` : 'ยังไม่มีแขกถัดไป'}</p></div>
+        <button class="btn btn-ok btn-sm" data-act="clean" data-id="${esc(r.room_number)}">${ic('check')}พร้อมแล้ว</button></li>`; }).join('')}</ul>`
+      : '<p class="px-4 pb-4 text-sm text-muted">ทุกห้องพร้อมเข้าพัก 🎉</p>';
+
+    const acts = (S.activity || []).slice(0, 15);
+    $('#dash-activity').innerHTML = acts.length ? acts.map((a) => `<li class="px-4 py-2.5 text-sm"><p><b>${esc(a.staff || 'ระบบ')}</b> · ${esc(actionLabel(a.action))}${a.room_number ? ` · ห้อง ${esc(a.room_number)}` : ''}</p>
+      <p class="text-xs text-muted">${esc(a.detail || '')}${a.booking_id ? ` · <button class="underline" data-open="${esc(a.booking_id)}">${esc(a.booking_id)}</button>` : ''} · ${esc(ago(a.timestamp))}</p></li>`).join('')
+      : '<li class="px-4 pb-4 text-sm text-muted">ยังไม่มีกิจกรรม</li>';
+  }
+  const ACTIONS = { check_in: 'เช็กอิน', check_out: 'เช็กเอาต์', cancel: 'ยกเลิกการจอง', no_show: 'ไม่มาเข้าพัก', resolve_issue: 'ปิดเรื่องที่แขกแจ้ง', change_room: 'ย้ายห้อง',
+    update_booking: 'แก้ไขการจอง', room_status: 'สถานะห้อง', settings: 'ตั้งค่า', create_booking: 'บันทึกการจองใหม่', rating: 'แขกให้คะแนน', issue: 'แขกแจ้งปัญหา',
+    hk_start: 'แม่บ้านเริ่มทำความสะอาด', hk_done: 'แม่บ้านทำความสะอาดเสร็จ', set_group: 'ตั้งกลุ่ม LINE', pre_arrival: 'ส่งข้อความก่อนเข้าพัก', seed: 'ข้อมูลตัวอย่าง' };
+  const actionLabel = (a) => ACTIONS[a] || a;
+
+  /* ---------- Bookings ---------- */
+  const STATUS_FILTERS = [['', 'ทั้งหมด'], ['Confirmed', 'ยืนยันแล้ว'], ['Checked-in', 'กำลังเข้าพัก'], ['Need Attention', 'ต้องดูแล'], ['Checked-out', 'เช็กเอาต์แล้ว'], ['Cancelled', 'ยกเลิก'], ['No-show', 'ไม่มา']];
+  $('#bk-status').innerHTML = STATUS_FILTERS.map(([v, l]) => `<button type="button" class="chip" data-status="${v}" aria-pressed="${v === '' ? 'true' : 'false'}">${l}</button>`).join('');
+  $('#bk-status').addEventListener('click', (e) => { const b = e.target.closest('[data-status]'); if (!b) return; filt.status = b.dataset.status;
+    $$('#bk-status .chip').forEach((c) => c.setAttribute('aria-pressed', String(c === b))); renderBookings(); });
+  $('#bk-search').addEventListener('input', (e) => { filt.q = e.target.value.trim().toLowerCase(); renderBookings(); });
+  $('#bk-period').addEventListener('change', (e) => { filt.period = e.target.value; renderBookings(); });
+  $('#bk-source').addEventListener('change', (e) => { filt.source = e.target.value; renderBookings(); });
+
+  function filteredBookings() {
+    const t = T();
+    let rows = S.bookings.filter((b) => {
+      if (filt.status && b.status !== filt.status) return false;
+      if (filt.source === 'ota' && !OTA.includes(b.source)) return false;
+      if (filt.source === 'direct' && OTA.includes(b.source)) return false;
+      switch (filt.period) {
+        case 'upcoming': if (!(ACTIVE.includes(b.status) && b.check_out >= t) && !(filt.status && !ACTIVE.includes(filt.status))) return false; break;
+        case 'today': if (b.check_in !== t) return false; break;
+        case 'tomorrow': if (b.check_in !== addDays(t, 1)) return false; break;
+        case '7d': if (b.check_in < t || b.check_in > addDays(t, 7)) return false; break;
+        case 'past': if (b.check_out >= t) return false; break;
+      }
+      if (filt.q) {
+        const hay = [b.booking_id, b.full_name, b.phone, b.email, b.room_number, b.special_requests].join(' ').toLowerCase();
+        if (!hay.includes(filt.q) && !hay.replace(/[\s-]/g, '').includes(filt.q.replace(/[\s-]/g, ''))) return false;
+      }
+      return true;
+    });
+    const asc = ['upcoming', 'today', 'tomorrow', '7d'].includes(filt.period);
+    rows.sort((a, c) => (asc ? a.check_in.localeCompare(c.check_in) : c.check_in.localeCompare(a.check_in)) || a.booking_id.localeCompare(c.booking_id));
+    return rows;
+  }
+  function renderBookings() {
+    const rows = filteredBookings();
+    $('#bk-count').textContent = `${rows.length} รายการ`;
+    const pay = (b) => (b.payment_status === 'Paid' ? '<span class="text-xs text-ok">ชำระแล้ว</span>' : `<span class="text-xs text-muted">${esc(PAY[b.payment_status] || 'ยังไม่ชำระ')}</span>`);
+    $('#bk-rows').innerHTML = rows.map((b) => `<tr class="row-hover cursor-pointer" data-open="${esc(b.booking_id)}">
+      <td class="px-4 py-3"><p class="font-semibold">${esc(b.full_name)}</p><p class="text-xs text-muted">${esc(b.booking_id)} · ${guests(b)}${b.line_user_id ? ` · ${ic('message-circle', 'inline text-[#06C755]')}` : ''}</p></td>
+      <td class="px-3 py-3">${b.room_number ? `<b>${esc(b.room_number)}</b>` : '<span class="text-bad">—</span>'}<p class="text-xs text-muted">${esc(typeName(b.room_type))}</p></td>
+      <td class="px-3 py-3 whitespace-nowrap">${fmt(b.check_in)} → ${fmt(b.check_out)}<p class="text-xs text-muted">${b.nights} คืน</p></td>
+      <td class="px-3 py-3">${stBadge(b.status)}${b.issue_category && b.status === 'Need Attention' ? `<p class="mt-1 text-xs text-bad">${esc(b.issue_category)}</p>` : ''}</td>
+      <td class="px-3 py-3 text-right whitespace-nowrap"><b>${baht(b.price_total)}</b><p>${pay(b)}</p></td>
+      <td class="px-3 py-3 text-xs">${esc(SRC[b.source] || b.source || '—')}</td></tr>`).join('')
+      || '<tr><td colspan="6" class="px-4 py-10 text-center text-muted">ไม่พบการจองตามเงื่อนไข</td></tr>';
+    $('#bk-cards').innerHTML = rows.map((b) => `<li><button type="button" data-open="${esc(b.booking_id)}" class="row-hover block w-full px-4 py-3 text-left">
+      <div class="flex items-center justify-between gap-2"><p class="truncate font-semibold">${esc(b.full_name)}</p>${stBadge(b.status)}</div>
+      <p class="mt-0.5 text-xs text-muted">${esc(b.booking_id)} · ${b.room_number ? 'ห้อง ' + esc(b.room_number) : 'ยังไม่ระบุห้อง'} · ${esc(typeName(b.room_type))}</p>
+      <div class="mt-1 flex items-center justify-between text-sm"><span>${fmt(b.check_in)} → ${fmt(b.check_out)} · ${b.nights} คืน</span><b>${baht(b.price_total)}</b></div></button></li>`).join('')
+      || '<li class="px-4 py-10 text-center text-muted">ไม่พบการจองตามเงื่อนไข</li>';
+  }
+
+  /* ---------- Rooms ---------- */
+  function renderRooms() {
+    const t = T();
+    const counts = Object.keys(HK).map((k) => [k, S.rooms.filter((r) => r.hk_status === k).length]);
+    $('#hk-summary').innerHTML = counts.map(([k, n]) => `<span class="badge hk-${k.replace(/ /g, '-')} !px-3 !py-1.5 !text-sm">${ic(HK_ICON[k])}${HK[k]} ${n}</span>`).join('');
+    const floors = {};
+    for (const r of S.rooms) { const f = r.floor || String(r.room_number).slice(0, -2) || '-'; (floors[f] = floors[f] || []).push(r); }
+    $('#room-floors').innerHTML = Object.keys(floors).sort((a, b) => Number(a) - Number(b)).map((f) => `<div><h3 class="mb-2 text-sm font-semibold text-muted">ชั้น ${esc(f)}</h3>
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">${floors[f].map((r) => {
+        const occ = occupant(r.room_number), n = nextArrival(r.room_number);
+        const line = occ ? `${ic('user', 'inline')} ${esc(occ.full_name)} · ${occ.check_out <= t ? '<b class="text-bad">ออกวันนี้</b>' : 'ถึง ' + fmt(occ.check_out)}`
+          : n ? `${n.check_in === t ? '<b class="text-[#2B5FA8]">⚡ เข้าวันนี้</b>' : 'ว่าง · เข้า ' + fmt(n.check_in)} · ${esc(n.full_name)}` : 'ว่าง';
+        return `<button type="button" class="room-tile" data-room="${esc(r.room_number)}">
+          <div class="flex items-start justify-between gap-2"><span class="font-serif text-2xl font-bold">${esc(r.room_number)}</span>${hkBadge(r.hk_status)}</div>
+          <p class="text-xs text-muted">${esc(typeName(r.room_type))}</p>
+          <p class="mt-2 truncate text-xs">${line}</p>${r.hk_note ? `<p class="mt-1 truncate text-[11px] text-muted">${esc(r.hk_note)}</p>` : ''}</button>`; }).join('')}</div></div>`).join('');
+    renderTimeline();
+  }
+  $('#room-floors').addEventListener('click', (e) => { const b = e.target.closest('[data-room]'); if (b) roomModal(b.dataset.room); });
+
+  function renderTimeline() {
+    const start = addDays(T(), -2), days = Array.from({ length: 14 }, (_, i) => addDays(start, i)), end = addDays(start, 14);
+    let html = '<div class="h" style="position:sticky;left:0;z-index:3">ห้อง</div>' + days.map((d) => `<div class="h ${d === T() ? 'today' : ''}">${fmt(d, { weekday: 'short' })}<br>${fmt(d, { day: 'numeric' })}</div>`).join('');
+    const visible = S.bookings.filter((b) => ['Confirmed', 'Checked-in', 'Need Attention', 'Checked-out'].includes(b.status) && b.check_in < end && b.check_out > start);
+    const rows = S.rooms.map((r) => ({ label: r.room_number, sub: '', items: visible.filter((b) => b.room_number === r.room_number) }));
+    const un = visible.filter((b) => !b.room_number);
+    un.forEach((b) => rows.push({ label: 'ยังไม่ระบุ', sub: typeName(b.room_type), items: [b], warn: true }));
+    rows.forEach((row, i) => {
+      const gr = i + 2;
+      html += `<div class="rl" style="grid-row:${gr};grid-column:1">${esc(row.label)}${row.sub ? `<span class="block text-[10px] font-normal text-muted">${esc(row.sub)}</span>` : ''}</div>`;
+      days.forEach((d, j) => { html += `<div class="c ${d === T() ? 'today' : ''}" style="grid-row:${gr};grid-column:${j + 2}"></div>`; });
+      row.items.forEach((b) => {
+        const s = Math.max(0, diffDays(start, b.check_in)), e2 = Math.min(14, diffDays(start, b.check_out));
+        if (e2 <= s) return;
+        html += `<button type="button" class="bar badge st-${b.status.replace(/ /g, '-')}" style="grid-row:${gr};grid-column:${s + 2} / span ${e2 - s};display:block"
+          data-open="${esc(b.booking_id)}" title="${esc(b.full_name)} · ${esc(b.booking_id)}">${esc(b.full_name)}</button>`;
+      });
+    });
+    $('#timeline').innerHTML = html;
+  }
+
+  /* ---------- New booking ---------- */
+  const SOURCES = ['Walk-in', 'Phone', 'Agoda', 'Booking.com', 'Trip.com', 'Expedia', 'Other'];
+  $('#nb-sources').innerHTML = SOURCES.map((s) => `<button type="button" class="chip" data-src="${s}" aria-pressed="${s === nb.source}">${esc(SRC[s])}</button>`).join('');
+  $('#nb-sources').addEventListener('click', (e) => { const b = e.target.closest('[data-src]'); if (!b) return; nb.source = b.dataset.src;
+    $$('#nb-sources .chip').forEach((c) => c.setAttribute('aria-pressed', String(c === b))); renderNew(); });
+  $('#nb-types').addEventListener('click', (e) => { const b = e.target.closest('[data-type]'); if (!b || b.disabled) return; nb.type = b.dataset.type; renderNew(); });
+  // อัปเดตทันทีที่พิมพ์ (input) และตอนออกจากช่อง (change) · setHTML ไม่แทนที่ปุ่มถ้าเนื้อหาเหมือนเดิม
+  // (ถ้าแทนที่ปุ่มระหว่างกด คลิกแรกจะหาย)
+  ['nb-ci', 'nb-co', 'nb-adults', 'nb-children', 'nb-room', 'nb-price', 'nb-now'].forEach((id) => ['input', 'change'].forEach((ev) => $('#' + id).addEventListener(ev, () => {
+    if (id === 'nb-ci' && isYmd($('#nb-ci').value) && (!isYmd($('#nb-co').value) || $('#nb-co').value <= $('#nb-ci').value)) $('#nb-co').value = addDays($('#nb-ci').value, 1);
+    renderNew();
+  })));
+  const setHTML = (el, html) => { if (el.__html !== html) { el.innerHTML = html; el.__html = html; } };
+  let nbInit = false;
+  function renderNew() {
+    const t = T();
+    if (!nbInit) { $('#nb-ci').value = t; $('#nb-co').value = addDays(t, 1); nbInit = true; }
+    $('#nb-ci').min = t; $('#nb-co').min = addDays($('#nb-ci').value || t, 1);
+    const ci = $('#nb-ci').value, co = $('#nb-co').value;
+    const validDates = isYmd(ci) && isYmd(co) && co > ci && ci >= t;
+    const guestsN = num($('#nb-adults').value, 1) + num($('#nb-children').value, 0);
+    const av = validDates ? availability(ci, co) : {};
+    const types = S.room_types.filter((x) => x.active);
+    const cur = types.find((x) => x.room_type === nb.type);
+    if (nb.type && (!validDates || !cur || !(av[nb.type]?.available > 0) || guestsN > cur.max_guests)) nb.type = '';
+    setHTML($('#nb-types'), types.map((x) => {
+      const a = av[x.room_type]?.available ?? 0, fits = guestsN <= x.max_guests;
+      const dis = !validDates || a <= 0 || !fits;
+      return `<button type="button" class="opt" data-type="${esc(x.room_type)}" aria-pressed="${nb.type === x.room_type}" ${dis ? 'disabled' : ''}>
+        <p class="font-semibold">${esc(x.name)}</p><p class="text-xs ${a > 0 ? 'text-ok' : 'text-bad'}">${validDates ? (fits ? (a > 0 ? `ว่าง ${a} ห้อง` : 'เต็ม') : `พักได้ ${x.max_guests} ท่าน`) : 'เลือกวันที่'}</p>
+        <p class="text-xs text-muted">${validDates ? baht(quote(x.room_type, ci, co)) + ` · ${diffDays(ci, co)} คืน` : baht(x.price) + '/คืน'}</p></button>`;
+    }).join(''));
+    const sel = $('#nb-room'), prev = sel.value;
+    const free = nb.type ? (av[nb.type]?.free || []) : [];
+    setHTML(sel, `<option value="">${nb.type ? 'ให้ระบบเลือกห้องที่พร้อม' : 'เลือกประเภทห้องก่อน'}</option>` +
+      free.map((r) => `<option value="${esc(r.room_number)}">${esc(r.room_number)} · ${HK[r.hk_status]}${occupant(r.room_number) ? ' · แขกเดิมยังไม่ออก' : ''}</option>`).join(''));
+    sel.value = free.some((r) => r.room_number === prev) ? prev : '';
+    sel.disabled = !nb.type;
+    const nowOk = ci === t;
+    $('#nb-now').disabled = !nowOk; if (!nowOk) $('#nb-now').checked = false;
+    const price = String($('#nb-price').value).trim() !== '' ? num($('#nb-price').value) : (nb.type && validDates ? quote(nb.type, ci, co) : 0);
+    setHTML($('#nb-summary'), [
+      ['ช่องทาง', SRC[nb.source]], ['ห้อง', nb.type ? `${typeName(nb.type)}${sel.value ? ' · ' + sel.value : ''}` : '—'],
+      ['เข้าพัก', validDates ? `${fmt(ci)} → ${fmt(co)} (${diffDays(ci, co)} คืน)` : '—'], ['ผู้เข้าพัก', `${num($('#nb-adults').value, 1)} ผู้ใหญ่${num($('#nb-children').value) ? ' · ' + num($('#nb-children').value) + ' เด็ก' : ''}`],
+      ['ราคารวม', price ? baht(price) : '—'],
+    ].map(([a, b]) => `<dt>${a}</dt><dd class="font-medium">${esc(b)}</dd>`).join(''));
+    $('#nb-submit').disabled = !nb.type || !validDates;
+  }
+  $('#new-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = $('#nb-name').value.trim();
+    if (name.length < 2) { $('#nb-error').textContent = 'กรอกชื่อผู้เข้าพัก'; $('#nb-name').focus(); return; }
+    $('#nb-error').textContent = '';
+    const btn = $('#nb-submit'); btn.disabled = true; btn.querySelector('.spinner').hidden = false;
+    const res = await act('create_booking', { booking: {
+      source: nb.source, full_name: name, phone: $('#nb-phone').value.trim(), email: $('#nb-email').value.trim(),
+      check_in: $('#nb-ci').value, check_out: $('#nb-co').value, adults: num($('#nb-adults').value, 1), children: num($('#nb-children').value, 0),
+      room_type: nb.type, room_number: $('#nb-room').value, price_total: $('#nb-price').value.trim(),
+      arrival_time: $('#nb-arrival').value.trim(), special_requests: $('#nb-requests').value.trim(), staff_note: $('#nb-note').value.trim(),
+      check_in_now: $('#nb-now').checked, paid: $('#nb-paid').checked } });
+    btn.querySelector('.spinner').hidden = true; btn.disabled = false;
+    if (res?.booking_id) {
+      ['nb-name', 'nb-phone', 'nb-email', 'nb-arrival', 'nb-requests', 'nb-note', 'nb-price'].forEach((id) => { $('#' + id).value = ''; });
+      $('#nb-now').checked = $('#nb-paid').checked = false; nb.type = '';
+      renderNew(); openDrawer(res.booking_id);
+    }
+  });
+
+  /* ---------- Settings ---------- */
+  const SETTINGS = [
+    ['hk_notify_new_booking', 'แจ้งกลุ่มแม่บ้านเมื่อมีการจองใหม่ / ยกเลิก', 'ให้แม่บ้านเตรียมห้องที่จะมีแขกเข้าพัก'],
+    ['hk_notify_checkout', 'แจ้งกลุ่มแม่บ้านเมื่อแขกเช็กเอาต์ / ย้ายห้อง', 'พร้อมปุ่ม "เริ่มทำความสะอาด" และ "ห้องพร้อมแล้ว"'],
+    ['hk_daily_digest', 'สรุปงานแม่บ้านทุกเช้า 09:00', 'รายการเข้าพัก เช็กเอาต์ พักต่อ และห้องรอทำความสะอาด (Workflow F)'],
+    ['pre_arrival_enabled', 'ส่งข้อความก่อนเข้าพัก 1 วัน', 'ส่งให้แขกที่จองผ่าน LINE: เวลาเช็กอิน แผนที่ ยอดชำระ (Workflow F)'],
+  ];
+  function renderSettings() {
+    $('#settings-list').innerHTML = SETTINGS.map(([k, t, d]) => `<li class="flex items-center gap-4 px-4 py-3.5 sm:px-5"><div class="min-w-0 flex-1"><p class="font-medium">${t}</p><p class="text-sm text-muted">${d}</p></div>
+      <button type="button" class="switch" role="switch" aria-label="${esc(t)}" aria-checked="${!!S.settings[k]}" data-setting="${k}"></button></li>`).join('');
+    const g = (ok, title, desc) => `<div class="rounded-xl border ${ok ? 'border-[#BFE3CD] bg-[#F1FAF4]' : 'border-[#E7B4AE] bg-[#FDF3F1]'} p-3 text-sm">
+      <p class="flex items-center gap-1.5 font-semibold ${ok ? 'text-ok' : 'text-bad'}">${ic(ok ? 'circle-check' : 'circle-alert')}${title}</p><p class="mt-0.5 text-muted">${desc}</p></div>`;
+    $('#group-status').innerHTML = g(S.settings.housekeeping_group_set, 'กลุ่มแม่บ้าน', S.settings.housekeeping_group_set ? 'เชื่อมต่อแล้ว' : 'ยังไม่ได้ตั้ง — จะไม่มีการแจ้งแม่บ้าน')
+      + g(S.settings.staff_group_set, 'กลุ่มพนักงานต้อนรับ', S.settings.staff_group_set ? 'เชื่อมต่อแล้ว (แจ้งปัญหาจากแขก)' : 'ยังไม่ได้ตั้ง — จะไม่มีการแจ้งเมื่อแขกแจ้งปัญหา');
+  }
+  $('#settings-list').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-setting]'); if (!b) return;
+    const v = b.getAttribute('aria-checked') !== 'true';
+    b.setAttribute('aria-checked', String(v)); b.disabled = true;
+    const r = await act('set_config', { values: { [b.dataset.setting]: v } }, { okMsg: v ? 'เปิดการแจ้งเตือนแล้ว' : 'ปิดการแจ้งเตือนแล้ว' });
+    if (!r) b.setAttribute('aria-checked', String(!v));
+    b.disabled = false;
+  });
+
+  /* =========================================================
+     Drawer (รายละเอียดการจอง)
+     ========================================================= */
+  function openDrawer(id) {
+    drawerId = id; drawerMode = 'view';
+    $('#drawer').hidden = false; $('#drawer-backdrop').hidden = false; document.body.style.overflow = 'hidden';
+    renderDrawer();
+  }
+  function closeDrawer() { drawerId = null; drawerMode = 'view'; $('#drawer').hidden = true; $('#drawer-backdrop').hidden = true; document.body.style.overflow = ''; }
+  $('#drawer-backdrop').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#modal').open && drawerId) closeDrawer(); });
+
+  function renderDrawer() {
+    const b = byId(drawerId), d = $('#drawer');
+    if (!b) { d.innerHTML = `<div class="p-6"><p>ไม่พบการจอง ${esc(drawerId)} (อาจยังไม่รีเฟรช)</p><button class="btn btn-outline mt-4" data-close>ปิด</button></div>`; d.querySelector('[data-close]').onclick = closeDrawer; return; }
+    const t = T();
+    const msgs = (S.messages || []).filter((m) => (m.booking_id && m.booking_id === b.booking_id) || (!m.booking_id && b.line_user_id && m.line_user_id === b.line_user_id)).slice(0, 30);
+    const acts = (S.activity || []).filter((a) => a.booking_id === b.booking_id).slice(0, 20);
+    const tags = String(b.preference_tags || '').split(',').map((x) => x.trim()).filter((x) => x && x !== '-');
+    const A = [];
+    if (b.status === 'Confirmed') {
+      if (b.check_in <= t) A.push(`<button class="btn btn-dark" data-act="checkin" data-id="${esc(b.booking_id)}">${ic('key-round')}เช็กอิน</button>`);
+      A.push(`<button class="btn btn-outline" data-act="move" data-id="${esc(b.booking_id)}">${ic('arrow-right-left')}${b.room_number ? 'เปลี่ยนห้อง' : 'จัดห้อง'}</button>`);
+      if (b.check_in <= t) A.push(`<button class="btn btn-bad" data-act="noshow" data-id="${esc(b.booking_id)}">${ic('user-x')}ไม่มาเข้าพัก</button>`);
+      A.push(`<button class="btn btn-bad" data-act="cancel" data-id="${esc(b.booking_id)}">${ic('ban')}ยกเลิกการจอง</button>`);
+    }
+    if (INHOUSE.includes(b.status)) {
+      A.push(`<button class="btn btn-gold" data-act="checkout" data-id="${esc(b.booking_id)}">${ic('door-open')}เช็กเอาต์</button>`);
+      if (b.status === 'Need Attention') A.push(`<button class="btn btn-ok" data-act="resolve" data-id="${esc(b.booking_id)}">${ic('check')}ปิดเรื่อง</button>`);
+      A.push(`<button class="btn btn-outline" data-act="move" data-id="${esc(b.booking_id)}">${ic('arrow-right-left')}ย้ายห้อง</button>`);
+    }
+    A.push(`<button class="btn btn-outline" data-act="edit" data-id="${esc(b.booking_id)}">${ic('pencil')}แก้ไข</button>`);
+    d.innerHTML = `
+      <div class="flex items-start gap-3 border-b border-line bg-[#FBF8F1] px-5 py-4">
+        <div class="min-w-0 flex-1"><p class="text-xs text-muted">${esc(b.booking_id)} · ${esc(SRC[b.source] || b.source || '—')}</p>
+          <h2 id="dr-title" class="truncate font-serif text-xl font-bold">${esc(b.full_name)}</h2>
+          <p class="mt-1 flex flex-wrap gap-1.5">${stBadge(b.status)}${b.payment_status === 'Paid' ? '<span class="badge st-Checked-in">ชำระแล้ว</span>' : `<span class="badge st-Checked-out">${esc(PAY[b.payment_status] || 'ยังไม่ชำระ')}</span>`}${b.line_user_id ? `<span class="badge bg-[#E8F8EF] text-[#06A247]">${ic('message-circle')}LINE</span>` : ''}</p></div>
+        <button type="button" class="btn btn-outline btn-sm" data-close aria-label="ปิด">${ic('x')}</button>
+      </div>
+      <div class="flex-1 overflow-y-auto" id="dr-body">
+        ${b.status === 'Need Attention' ? `<div class="m-4 rounded-xl border border-[#E7B4AE] bg-[#FDECEA] p-3 text-sm text-bad">${ic('triangle-alert', 'inline -mt-0.5')} แขกแจ้งปัญหา: <b>${esc(b.issue_category || '-')}</b>${b.rating ? ` · คะแนนคืนแรก ${esc(b.rating)}/5` : ''}</div>` : ''}
+        <div class="flex flex-wrap gap-2 px-5 py-4">${A.join('')}</div>
+        <div class="drawer-sec"><h3 class="mb-2 text-sm font-semibold text-muted">การเข้าพัก</h3><dl class="kv">
+          <dt>ห้อง</dt><dd><b>${b.room_number ? esc(b.room_number) : '<span class="text-bad">ยังไม่ระบุ</span>'}</b> · ${esc(typeName(b.room_type))}</dd>
+          <dt>เช็กอิน</dt><dd>${fmtLong(b.check_in)}${b.checked_in_at ? ` <span class="text-xs text-muted">(เข้าจริง ${esc(fmtTs(b.checked_in_at))})</span>` : ''}</dd>
+          <dt>เช็กเอาต์</dt><dd>${fmtLong(b.check_out)}${b.checked_out_at ? ` <span class="text-xs text-muted">(ออกจริง ${esc(fmtTs(b.checked_out_at))})</span>` : ''}</dd>
+          <dt>จำนวน</dt><dd>${b.nights} คืน · ${guests(b)}</dd>
+          <dt>เวลาถึง</dt><dd>${esc(b.arrival_time || '—')}</dd>
+          <dt>คำขอพิเศษ</dt><dd>${esc(b.special_requests || '—')}</dd>
+        </dl></div>
+        <div class="drawer-sec"><h3 class="mb-2 text-sm font-semibold text-muted">ราคา</h3><dl class="kv">
+          <dt>ยอดชำระ</dt><dd><b>${baht(b.price_total)}</b>${b.discount ? ` <span class="text-xs text-ok">(ส่วนลด ${baht(b.discount)} · ${esc(b.promo_code)})</span>` : ''}</dd>
+          <dt>การชำระ</dt><dd>${esc(PAY[b.payment_status] || 'ยังไม่ชำระ')}</dd></dl></div>
+        <div class="drawer-sec"><h3 class="mb-2 text-sm font-semibold text-muted">ผู้เข้าพัก</h3><dl class="kv">
+          <dt>โทร</dt><dd>${b.phone ? `<a class="text-[#2B5FA8] underline" href="tel:${esc(String(b.phone).replace(/[^\d+]/g, ''))}">${esc(b.phone)}</a>` : '—'}</dd>
+          <dt>อีเมล</dt><dd class="break-all">${esc(b.email || '—')}</dd>
+          <dt>ความชอบ (AI)</dt><dd>${tags.length ? tags.map((x) => `<span class="badge bg-[#F6ECFA] text-[#7B4A94]">${ic('sparkles')}${esc(x)}</span>`).join(' ') : '<span class="text-muted">—</span>'}</dd>
+          <dt>บันทึกภายใน</dt><dd class="whitespace-pre-wrap">${esc(b.staff_note || '—')}</dd></dl></div>
+        ${msgs.length ? `<div class="drawer-sec"><h3 class="mb-2 text-sm font-semibold text-muted">ข้อความจากแขกใน LINE</h3><ul class="space-y-2">${msgs.map((m) =>
+          `<li class="rounded-xl bg-[#F4F1EA] px-3 py-2 text-sm"><p>${esc(m.text)}</p><p class="mt-0.5 text-[11px] text-muted">${esc(fmtTs(m.timestamp))}</p></li>`).join('')}</ul></div>` : ''}
+        <div class="drawer-sec"><h3 class="mb-2 text-sm font-semibold text-muted">ประวัติ</h3><ul class="space-y-1.5 text-sm">
+          <li class="text-muted">${esc(fmtTs(b.created_at))} · สร้างการจอง (${esc(SRC[b.source] || b.source || '—')})</li>
+          ${acts.map((a) => `<li><span class="text-muted">${esc(fmtTs(a.timestamp))}</span> · <b>${esc(a.staff)}</b> · ${esc(actionLabel(a.action))} <span class="text-muted">${esc(a.detail || '')}</span></li>`).join('')}</ul></div>
+      </div>`;
+    d.querySelector('[data-close]').onclick = closeDrawer;
+  }
+
+  /* =========================================================
+     Actions (modal forms)
+     ========================================================= */
+  const modal = $('#modal');
+  function openModal(html) { $('#modal-body').innerHTML = html; if (!modal.open) modal.showModal(); }
+  const closeModal = () => { if (modal.open) modal.close(); };
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+  const cdlg = $('#confirm');
+  function confirmBox({ title, message, okLabel = 'ยืนยัน', tone = 'dark' }) {
+    return new Promise((resolve) => {
+      $('#confirm-body').innerHTML = `<h3 class="font-serif text-lg font-bold">${esc(title)}</h3><p class="mt-2 text-sm text-muted">${esc(message)}</p>
+        <div class="mt-5 flex justify-end gap-2"><button type="button" class="btn btn-outline" data-no>ยกเลิก</button><button type="button" class="btn ${tone === 'bad' ? 'btn-bad' : 'btn-dark'}" data-yes>${esc(okLabel)}</button></div>`;
+      let answered = false;
+      const done = (v) => { if (answered) return; answered = true; if (cdlg.open) cdlg.close(); resolve(v); };
+      cdlg.addEventListener('close', () => done(false), { once: true });
+      $('#confirm-body [data-yes]').onclick = () => done(true);
+      $('#confirm-body [data-no]').onclick = () => done(false);
+      cdlg.showModal();
+      $('#confirm-body [data-yes]').focus();
+    });
+  }
+  function formModal({ title, body, okLabel, onOk, tone = 'dark' }) {
+    openModal(`<form id="mf" novalidate><h3 class="font-serif text-lg font-bold">${title}</h3><div class="mt-3 space-y-3">${body}</div>
+      <p id="mf-err" class="mt-2 min-h-[1rem] text-sm text-bad"></p>
+      <div class="mt-3 flex justify-end gap-2"><button type="button" class="btn btn-outline" data-no>ยกเลิก</button>
+      <button type="submit" class="btn ${tone === 'bad' ? 'btn-bad' : tone === 'gold' ? 'btn-gold' : 'btn-dark'}"><span class="spinner" hidden></span>${okLabel}</button></div></form>`);
+    $('#mf [data-no]').onclick = closeModal;
+    $('#mf').onsubmit = async (e) => {
+      e.preventDefault();
+      const btn = $('#mf [type=submit]'); btn.disabled = true; btn.querySelector('.spinner').hidden = false;
+      const err = await onOk(new FormData($('#mf')));
+      if (typeof err === 'string') { if ($('#mf-err')) { $('#mf-err').textContent = err; btn.disabled = false; btn.querySelector('.spinner').hidden = true; } return; }
+      closeModal();
+    };
+  }
+  const roomOptions = (b, { includeCurrent = true } = {}) => {
+    const t = T();
+    const from = INHOUSE.includes(b.status) && t > b.check_in ? t : b.check_in;
+    const busy = new Set(S.bookings.filter((x) => x.booking_id !== b.booking_id && ACTIVE.includes(x.status) && x.room_number && overlaps(from, b.check_out, x.check_in, x.check_out)).map((x) => x.room_number));
+    return S.rooms.filter((r) => r.hk_status !== 'Out of Order' && !busy.has(r.room_number) && (includeCurrent || r.room_number !== b.room_number))
+      .sort((a, c) => (a.room_type === b.room_type ? 0 : 1) - (c.room_type === b.room_type ? 0 : 1) || a.room_number.localeCompare(c.room_number, 'en', { numeric: true }))
+      .map((r) => { const occ = occupant(r.room_number); return `<option value="${esc(r.room_number)}" ${r.room_number === b.room_number ? 'selected' : ''}>${esc(r.room_number)} · ${esc(typeName(r.room_type))} · ${HK[r.hk_status]}${occ && occ.booking_id !== b.booking_id ? ' · แขกเดิมยังไม่ออก' : ''}</option>`; }).join('');
+  };
+
+  async function quickAction(kind, id, el) {
+    if (kind === 'clean') { el.disabled = true; await act('set_room_status', { room_number: id, hk_status: 'Clean' }); return; }
+    const b = byId(id); if (!b) return;
+    if (kind === 'checkin') formModal({ title: `เช็กอิน · ${esc(b.full_name)}`, okLabel: 'เช็กอิน', body: `
+        <p class="text-sm text-muted">${esc(typeName(b.room_type))} · ${fmt(b.check_in)} → ${fmt(b.check_out)} · ${guests(b)}${b.special_requests ? `<br><span class="text-gold-deep">คำขอ: ${esc(b.special_requests)}</span>` : ''}</p>
+        <div><label class="label" for="m-room">ห้อง</label><select id="m-room" name="room" class="field">${b.room_number ? '' : '<option value="">เลือกห้อง</option>'}${roomOptions(b)}</select></div>
+        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="paid" class="h-4 w-4 accent-[#B08D3E]" ${b.payment_status === 'Paid' ? 'checked' : ''}> รับชำระเงินแล้ว (${baht(b.price_total)})</label>`,
+      onOk: async (f) => { if (!f.get('room')) return 'เลือกห้องก่อน'; const r = await act('check_in', { booking_id: id, room_number: f.get('room'), paid: !!f.get('paid') }); return r ? null : ''; } });
+    if (kind === 'checkout') formModal({ title: `เช็กเอาต์ · ห้อง ${esc(b.room_number || '-')}`, okLabel: 'เช็กเอาต์', tone: 'gold', body: `
+        <p class="text-sm">${esc(b.full_name)} · ยอดชำระ <b>${baht(b.price_total)}</b> (${esc(PAY[b.payment_status] || 'ยังไม่ชำระ')})</p>
+        ${b.status === 'Need Attention' ? `<p class="rounded-lg bg-[#FDECEA] px-3 py-2 text-sm text-bad">มีเรื่องที่แขกแจ้งค้างอยู่: ${esc(b.issue_category || '-')}</p>` : ''}
+        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="paid" class="h-4 w-4 accent-[#B08D3E]" ${b.payment_status === 'Paid' ? 'checked disabled' : 'checked'}> ชำระเงินครบแล้ว</label>
+        <p class="text-xs text-muted">ห้องจะเปลี่ยนเป็น "รอทำความสะอาด" และแจ้งกลุ่มแม่บ้าน${S.settings.hk_notify_checkout && S.settings.housekeeping_group_set ? '' : ' (ปิดการแจ้งอยู่)'}</p>`,
+      onOk: async (f) => { const r = await act('check_out', { booking_id: id, paid: b.payment_status === 'Paid' || !!f.get('paid') }); return r ? null : ''; } });
+    if (kind === 'resolve') formModal({ title: `ปิดเรื่อง "${esc(b.issue_category || '-')}" · ห้อง ${esc(b.room_number || '-')}`, okLabel: 'ปิดเรื่อง', body: `
+        <div><label class="label" for="m-note">สิ่งที่ทำ (แขกจะเห็นถ้าเลือกแจ้ง)</label><input id="m-note" name="note" class="field" maxlength="200" placeholder="เช่น ช่างเปลี่ยนรีโมทแอร์แล้ว"></div>
+        <label class="flex items-center gap-2 text-sm ${b.line_user_id ? '' : 'opacity-50'}"><input type="checkbox" name="notify" class="h-4 w-4 accent-[#B08D3E]" ${b.line_user_id ? '' : 'disabled'}> ส่งข้อความแจ้งแขกทาง LINE (ใช้โควตา 1 ข้อความ)</label>`,
+      onOk: async (f) => { const r = await act('resolve_issue', { booking_id: id, note: f.get('note') || '', notify_guest: !!f.get('notify') }); return r ? null : ''; } });
+    if (kind === 'move') formModal({ title: `${INHOUSE.includes(b.status) ? 'ย้ายห้อง' : b.room_number ? 'เปลี่ยนห้อง' : 'จัดห้อง'} · ${esc(b.full_name)}`, okLabel: 'บันทึก', body: `
+        <p class="text-sm text-muted">ตอนนี้: ${b.room_number ? 'ห้อง ' + esc(b.room_number) : 'ยังไม่ระบุห้อง'} · ${esc(typeName(b.room_type))}</p>
+        <div><label class="label" for="m-room2">ห้องใหม่ (แสดงเฉพาะห้องที่ว่างช่วงนี้)</label><select id="m-room2" name="room" class="field">${roomOptions(b, { includeCurrent: false })}</select></div>
+        ${INHOUSE.includes(b.status) ? '<p class="text-xs text-muted">ห้องเดิมจะเปลี่ยนเป็น "รอทำความสะอาด" และแจ้งกลุ่มแม่บ้าน</p>' : ''}`,
+      onOk: async (f) => { if (!f.get('room')) return 'ไม่มีห้องว่างให้ย้าย'; const r = await act('change_room', { booking_id: id, room_number: f.get('room') }); return r ? null : ''; } });
+    if (kind === 'cancel') formModal({ title: `ยกเลิกการจอง ${esc(b.booking_id)}`, okLabel: 'ยืนยันยกเลิก', tone: 'bad', body: `
+        <p class="text-sm">${esc(b.full_name)} · ${fmt(b.check_in)} → ${fmt(b.check_out)}</p>
+        <div><label class="label" for="m-reason">เหตุผล</label><input id="m-reason" name="reason" class="field" maxlength="200" placeholder="เช่น แขกโทรมายกเลิก"></div>`,
+      onOk: async (f) => { const r = await act('cancel', { booking_id: id, reason: f.get('reason') || '' }); return r ? null : ''; } });
+    if (kind === 'noshow') { if (await confirmBox({ title: 'บันทึกว่าไม่มาเข้าพัก?', message: `${b.full_name} · ${b.booking_id} ห้องจะว่างสำหรับขายต่อ`, okLabel: 'บันทึก', tone: 'bad' })) await act('no_show', { booking_id: id }); }
+    if (kind === 'edit') formModal({ title: `แก้ไข ${esc(b.booking_id)}`, okLabel: 'บันทึก', body: `
+        <div class="grid grid-cols-2 gap-3">
+          <div class="col-span-2"><label class="label">ชื่อ-นามสกุล</label><input name="full_name" class="field" value="${esc(b.full_name)}" maxlength="100"></div>
+          <div><label class="label">โทร</label><input name="phone" class="field" value="${esc(b.phone)}" maxlength="20"></div>
+          <div><label class="label">อีเมล</label><input name="email" class="field" value="${esc(b.email)}" maxlength="120"></div>
+          <div><label class="label">เช็กอิน</label><input name="check_in" type="date" class="field" value="${esc(b.check_in)}" ${INHOUSE.includes(b.status) || !ACTIVE.includes(b.status) ? 'disabled' : ''}></div>
+          <div><label class="label">เช็กเอาต์</label><input name="check_out" type="date" class="field" value="${esc(b.check_out)}" ${!ACTIVE.includes(b.status) ? 'disabled' : ''}></div>
+          <div><label class="label">ผู้ใหญ่</label><input name="adults" type="number" min="1" max="10" class="field" value="${b.adults}"></div>
+          <div><label class="label">เด็ก</label><input name="children" type="number" min="0" max="10" class="field" value="${b.children}"></div>
+          <div><label class="label">เวลาถึง</label><input name="arrival_time" class="field" value="${esc(b.arrival_time)}" maxlength="40"></div>
+          <div><label class="label">การชำระ</label><select name="payment_status" class="field">${Object.entries(PAY).map(([k, v]) => `<option value="${k}" ${(b.payment_status || 'Unpaid') === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+          <div class="col-span-2"><label class="label">คำขอพิเศษ</label><input name="special_requests" class="field" value="${esc(b.special_requests)}" maxlength="500"></div>
+          <div><label class="label">ยอดชำระ (บาท)</label><input name="price_total" type="number" min="0" class="field" value="${b.price_total}"></div>
+          <div><label class="label">&nbsp;</label><p class="text-xs text-muted">ถ้าแก้วันที่และไม่แก้ยอด ระบบคิดราคาใหม่ให้</p></div>
+          <div class="col-span-2"><label class="label">บันทึกภายใน</label><input name="staff_note" class="field" value="${esc(b.staff_note)}" maxlength="1000"></div>
+        </div>`,
+      onOk: async (f) => {
+        const fields = {};
+        for (const [k, v] of f.entries()) { const cur = String(b[k] ?? ''); if (String(v) !== cur) fields[k] = v; }
+        if ('price_total' in fields && ('check_in' in fields || 'check_out' in fields) && String(f.get('price_total')) === String(b.price_total)) delete fields.price_total;
+        if (!Object.keys(fields).length) return 'ยังไม่ได้แก้ไขข้อมูล';
+        const r = await act('update_booking', { booking_id: id, fields }); return r ? null : '';
+      } });
+  }
+
+  function roomModal(no) {
+    const r = roomByNo(no); if (!r) return;
+    const occ = occupant(no), n = nextArrival(no);
+    openModal(`<div class="flex items-start justify-between gap-3"><div><h3 class="font-serif text-2xl font-bold">ห้อง ${esc(r.room_number)}</h3><p class="text-sm text-muted">${esc(typeName(r.room_type))} · ชั้น ${esc(r.floor || '-')}</p></div>${hkBadge(r.hk_status)}</div>
+      <div class="mt-3 space-y-1 text-sm">${occ ? `<p>แขกปัจจุบัน: <button class="font-semibold underline" data-open="${esc(occ.booking_id)}">${esc(occ.full_name)}</button> · ออก ${fmt(occ.check_out)}</p>` : '<p class="text-muted">ไม่มีแขกพักอยู่</p>'}
+        ${n ? `<p>แขกถัดไป: <button class="font-semibold underline" data-open="${esc(n.booking_id)}">${esc(n.full_name)}</button> · เข้า ${fmt(n.check_in)}</p>` : ''}
+        ${r.hk_updated_at ? `<p class="text-xs text-muted">อัปเดตล่าสุด ${esc(fmtTs(r.hk_updated_at))} โดย ${esc(r.hk_updated_by || '-')}</p>` : ''}</div>
+      <div class="mt-4"><label class="label" for="rm-note">หมายเหตุ</label><input id="rm-note" class="field" maxlength="200" value="${esc(r.hk_note)}" placeholder="เช่น เปลี่ยนผ้าม่าน"></div>
+      <p class="label mt-4">เปลี่ยนสถานะ</p><div class="grid grid-cols-2 gap-2">${Object.keys(HK).map((k) => `<button type="button" class="btn ${k === r.hk_status ? 'btn-dark' : 'btn-outline'}" data-hk="${k}">${ic(HK_ICON[k])}${HK[k]}</button>`).join('')}</div>
+      <div class="mt-4 flex justify-end"><button type="button" class="btn btn-outline" data-no>ปิด</button></div>`);
+    $('#modal-body [data-no]').onclick = closeModal;
+    $$('#modal-body [data-open]').forEach((x) => x.addEventListener('click', closeModal));
+    $$('#modal-body [data-hk]').forEach((x) => x.onclick = async () => {
+      $$('#modal-body [data-hk]').forEach((y) => { y.disabled = true; });
+      const res = await act('set_room_status', { room_number: no, hk_status: x.dataset.hk, note: $('#rm-note').value.trim() });
+      if (res) closeModal(); else $$('#modal-body [data-hk]').forEach((y) => { y.disabled = false; });
+    });
+  }
+
+  /* ---------- Toast ---------- */
+  function toast(msg, tone = 'ok') {
+    const el = document.createElement('div');
+    const c = tone === 'ok' ? 'border-[#BFE3CD] bg-[#F1FAF4] text-ok' : tone === 'warn' ? 'border-[#F1D9A6] bg-[#FFF8E8] text-[#8A5A0B]' : 'border-[#E7B4AE] bg-[#FDF3F1] text-bad';
+    el.className = `toast pointer-events-auto flex items-start gap-2 rounded-xl border px-3 py-2.5 text-sm shadow-lg ${c}`;
+    el.innerHTML = `${ic(tone === 'ok' ? 'circle-check' : 'circle-alert', 'mt-0.5')}<span>${esc(msg)}</span>`;
+    $('#toasts').appendChild(el);
+    setTimeout(() => el.remove(), tone === 'ok' ? 3500 : 7000);
+  }
+
+  /* ---------- Boot ---------- */
+  (async () => {
+    if (store.get('sl_staff_key')) {
+      const r = await api('GET');
+      if (r.ok && r.data?.success) { S = normalize(r.data); enterApp(); return; }
+      if (r.status === 403) store.set('sl_staff_key', '');
+      $('#login-error').textContent = r.status === 403 ? '' : connMsg(r);
+    }
+    $('#staff-name').value ? $('#staff-key').focus() : $('#staff-name').focus();
+  })();
+})();
+</script>
+</body>
+</html>
