@@ -14,31 +14,31 @@
   </script>
 
   <title>Sai Lan Hotel · ระบบหลังบ้าน</title>
-  <meta name="theme-color" content="#16161A">
+  <meta name="theme-color" content="#0D0E11">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Noto+Serif+Thai:wght@600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Noto+Serif+Thai:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.13"></script>
 
   <style type="text/tailwindcss">
     @theme {
-      --color-gold: #D4AF6A;
-      --color-gold-soft: #F3D98B;
-      --color-gold-deep: #B08D3E;
-      --color-ink: #16161A;
-      --color-ink-2: #1F1F25;
-      --color-ivory: #FAF7F0;
-      --color-line: #E7E0D1;
-      --color-muted: #6B665C;
+      --color-gold: #D4AF37;
+      --color-gold-soft: #E8D39A;
+      --color-gold-deep: #8E6E24;
+      --color-ink: #0D0E11;
+      --color-ink-2: #14161D;
+      --color-ivory: #F9F8F6;
+      --color-line: #E8E1D5;
+      --color-muted: #615C53;
       --color-ok: #2E7D4F;
       --color-bad: #B23A2E;
-      --font-sans: "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
-      --font-serif: "Noto Serif Thai", Georgia, serif;
+      --font-sans: "Plus Jakarta Sans", "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-serif: "Playfair Display", "Noto Serif Thai", Georgia, serif;
     }
   </style>
   <style>
     @layer theme, base, components, utilities;
-    body { background: #F6F3EC; }
+    body { background: #F3EFEA; }
     [hidden] { display: none !important; }
     dialog { margin: auto; border: none; padding: 0; background: transparent; color: inherit; }
     dialog::backdrop { background: rgba(8,8,10,.55); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
@@ -48,20 +48,20 @@
     @layer components {
       .ic { width: 1.1em; height: 1.1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
       .card { background: #fff; border: 1px solid #ECE5D6; border-radius: 18px; box-shadow: 0 14px 34px -26px rgba(22,22,26,.35); }
-      .h2 { font-family: "Noto Serif Thai", Georgia, serif; font-weight: 700; font-size: 1.15rem; color: #16161A; }
-      .field { width: 100%; font-size: 15px; background: #fff; color: #16161A; border: 1px solid #D9CFBC; border-radius: 12px; padding: .6rem .8rem; min-height: 2.75rem; }
-      .field:focus { outline: none; border-color: #B08D3E; box-shadow: 0 0 0 3px rgba(212,175,106,.28); }
+      .h2 { font-family: "Playfair Display", "Noto Serif Thai", Georgia, serif; font-weight: 700; font-size: 1.15rem; color: #0D0E11; }
+      .field { width: 100%; font-size: 15px; background: #fff; color: #0D0E11; border: 1px solid #D9CFBC; border-radius: 12px; padding: .6rem .8rem; min-height: 2.75rem; }
+      .field:focus { outline: none; border-color: #8E6E24; box-shadow: 0 0 0 3px rgba(212,175,55,.28); }
       .field:disabled { background: #F4F1EA; color: #8A857B; }
       .label { display: block; font-size: .78rem; color: #6B665C; margin-bottom: .3rem; font-weight: 500; }
       .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 12px; font-weight: 600; font-size: .875rem;
         padding: .5rem .9rem; border: 1px solid transparent; transition: filter .15s, background .15s; white-space: nowrap; }
       .btn:disabled { opacity: .5; cursor: not-allowed; }
-      .btn-gold { background: linear-gradient(135deg, #F3D98B 0%, #D4AF6A 45%, #B08D3E 100%); color: #16161A; }
+      .btn-gold { background: linear-gradient(135deg, #E8D39A 0%, #D4AF37 45%, #8E6E24 100%); color: #0D0E11; }
       .btn-gold:hover { filter: brightness(1.05); }
-      .btn-dark { background: #16161A; color: #FAF7F0; }
+      .btn-dark { background: #0D0E11; color: #F9F8F6; }
       .btn-dark:hover { background: #2A2A31; }
-      .btn-outline { background: #fff; border-color: #D9CFBC; color: #16161A; }
-      .btn-outline:hover { border-color: #B08D3E; }
+      .btn-outline { background: #fff; border-color: #D9CFBC; color: #0D0E11; }
+      .btn-outline:hover { border-color: #8E6E24; }
       .btn-ok { background: #2E7D4F; color: #fff; }
       .btn-ok:hover { filter: brightness(1.08); }
       .btn-bad { background: #fff; border-color: #E7B4AE; color: #B23A2E; }
@@ -80,19 +80,19 @@
       .hk-Out-of-Order { background: #E5E7EB; color: #4B5563; }
       .hk-Occupied { background: #FDF1E3; color: #A45A13; border: 1px solid #E8B86A; }
       .nav-btn { display: flex; align-items: center; gap: .7rem; width: 100%; padding: .65rem .8rem; border-radius: 12px; color: rgba(250,247,240,.72); font-size: .92rem; }
-      .nav-btn:hover { background: rgba(255,255,255,.06); color: #FAF7F0; }
-      .nav-btn[aria-current="page"] { background: rgba(212,175,106,.16); color: #F3D98B; font-weight: 600; }
+      .nav-btn:hover { background: rgba(255,255,255,.06); color: #F9F8F6; }
+      .nav-btn[aria-current="page"] { background: rgba(212,175,55,.16); color: #E8D39A; font-weight: 600; }
       .bnav-btn { display: flex; flex-direction: column; align-items: center; gap: .15rem; padding: .5rem .2rem; font-size: .68rem; color: rgba(250,247,240,.65); position: relative; }
-      .bnav-btn[aria-current="page"] { color: #F3D98B; }
+      .bnav-btn[aria-current="page"] { color: #E8D39A; }
       .count { min-width: 1.25rem; height: 1.25rem; padding: 0 .3rem; border-radius: 999px; background: #B23A2E; color: #fff; font-size: .68rem; font-weight: 700; display: inline-grid; place-items: center; }
       .kpi { padding: 1rem; }
-      .kpi .v { font-size: 1.6rem; font-weight: 700; line-height: 1.15; color: #16161A; }
+      .kpi .v { font-size: 1.6rem; font-weight: 700; line-height: 1.15; color: #0D0E11; }
       .chip { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid #E2DACA; background: #fff; color: #3D3A34; border-radius: 999px; padding: .3rem .75rem; font-size: .8rem; cursor: pointer; white-space: nowrap; }
-      .chip[aria-pressed="true"] { background: #16161A; color: #F3D98B; border-color: #16161A; }
+      .chip[aria-pressed="true"] { background: #0D0E11; color: #E8D39A; border-color: #0D0E11; }
       .spinner { width: 1rem; height: 1rem; border-radius: 999px; flex: none; border: 2px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; }
       .row-hover:hover { background: #FBF8F1; }
       .room-tile { text-align: left; border-radius: 16px; border: 1px solid #ECE5D6; background: #fff; padding: .8rem; transition: border-color .15s, box-shadow .15s; }
-      .room-tile:hover { border-color: #D4AF6A; box-shadow: 0 10px 24px -18px rgba(22,22,26,.5); }
+      .room-tile:hover { border-color: #D4AF37; box-shadow: 0 10px 24px -18px rgba(22,22,26,.5); }
       .tl-wrap { overflow-x: auto; }
       .tl { display: grid; grid-template-columns: 110px repeat(14, minmax(46px, 1fr)); min-width: 760px; font-size: .75rem; }
       .tl > .h { position: sticky; top: 0; background: #FBF8F1; padding: .4rem .3rem; text-align: center; border-bottom: 1px solid #E7E0D1; color: #6B665C; }
@@ -110,8 +110,23 @@
       .switch[aria-checked="true"] { background: #2E7D4F; }
       .switch[aria-checked="true"]::after { transform: translateX(18px); }
       .opt { border: 1px solid #E2DACA; border-radius: 14px; padding: .7rem .8rem; background: #fff; text-align: left; }
-      .opt[aria-pressed="true"] { border-color: #B08D3E; background: #FFFBF0; box-shadow: 0 0 0 2px rgba(212,175,106,.35); }
+      .opt[aria-pressed="true"] { border-color: #8E6E24; background: #FFFBF0; box-shadow: 0 0 0 2px rgba(212,175,55,.35); }
       .opt:disabled { opacity: .45; cursor: not-allowed; }
+    }
+  </style>
+  <style>
+    @layer components {
+      .card { border-color: rgba(197,168,128,.3); border-radius:16px; box-shadow: 0 18px 44px -34px rgba(60,45,20,.5); }
+      .h2 { font-weight:500; font-size:1.3rem; }
+      .btn-gold { background: linear-gradient(115deg,#B8923A 0%,#D4AF37 35%,#F1DB9A 50%,#D4AF37 65%,#B8923A 100%); background-size:220% 100%; background-position:0 0; color:#1F1A10; letter-spacing:.02em; box-shadow:0 14px 30px -14px rgba(184,146,58,.75); transition: background-position .8s ease, transform .1s, opacity .15s; }
+      .btn-gold:hover { background-position:100% 0; filter:none; }
+      .btn-dark { background:#0D0E11; } .btn-dark:hover { background:#1E2029; }
+      .btn-outline { border-color: rgba(197,168,128,.6); } .btn-outline:hover { border-color:#D4AF37; }
+      .kpi .v { font-family:"Playfair Display","Noto Serif Thai",serif; font-weight:500; font-size:2rem; }
+      .nav-btn[aria-current="page"] { background: rgba(212,175,55,.12); color:#E8D39A; box-shadow: inset 2px 0 0 #D4AF37; }
+      .chip[aria-pressed="true"] { background:#0D0E11; color:#E8D39A; border-color:#0D0E11; }
+      .room-tile { border-color: rgba(197,168,128,.3); } .room-tile:hover { border-color:#D4AF37; }
+      .tl > .h.today { background:#F6EBC8; color:#6E5519; }
     }
   </style>
 </head>
@@ -121,18 +136,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none"><symbol id="i-arrow-right-left" viewBox="0 0 24 24"><path d="m16 3 4 4-4 4" /><path d="M20 7H4" /><path d="m8 21-4-4 4-4" /><path d="M4 17h16" /></symbol><symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M4.929 4.929 19.07 19.071" /></symbol><symbol id="i-bed" viewBox="0 0 24 24"><path d="M2 4v16" /><path d="M2 8h18a2 2 0 0 1 2 2v10" /><path d="M2 17h20" /><path d="M6 8v9" /></symbol><symbol id="i-bed-double" viewBox="0 0 24 24"><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8" /><path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" /><path d="M12 4v6" /><path d="M2 18h20" /></symbol><symbol id="i-brush-cleaning" viewBox="0 0 24 24"><path d="m16 22-1-4" /><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1" /><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z" /><path d="m8 22 1-4" /></symbol><symbol id="i-calendar-check" viewBox="0 0 24 24"><path d="M8 2v3" /><path d="M16 2v3" /><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="m9 15 2 2 4-4" /></symbol><symbol id="i-calendar-x" viewBox="0 0 24 24"><path d="M8 2v3" /><path d="M16 2v3" /><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="m14 13-4 4" /><path d="m10 13 4 4" /></symbol><symbol id="i-chart-column" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></symbol><symbol id="i-circle-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></symbol><symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="m16 9-5.5 5.5L8 12" /></symbol><symbol id="i-clipboard-list" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M12 11h4" /><path d="M12 16h4" /><path d="M8 11h.01" /><path d="M8 16h.01" /></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></symbol><symbol id="i-door-open" viewBox="0 0 24 24"><path d="M10 21H2" /><path d="M10 3H7a2 2 0 00-2 2v16" /><path d="M14 12h.01" /><path d="M19 21V5a2 2 0 00-1.675-1.974l-6.163-1.013A1 1 0 0010 3v18a1 1 0 001.124.992z" /><path d="M22 21h-3" /></symbol><symbol id="i-gift" viewBox="0 0 24 24"><path d="M12 7v14" /><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8" /><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5" /><rect x="3" y="7" width="18" height="4" rx="1" /></symbol><symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></symbol><symbol id="i-key-round" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" /><circle cx="16.5" cy="7.5" r=".5" fill="currentColor" /></symbol><symbol id="i-layout-dashboard" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></symbol><symbol id="i-log-in" viewBox="0 0 24 24"><path d="m10 17 5-5-5-5" /><path d="M15 12H3" /><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /></symbol><symbol id="i-log-out" viewBox="0 0 24 24"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></symbol><symbol id="i-mail" viewBox="0 0 24 24"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7" /><rect x="2" y="4" width="20" height="16" rx="2" /></symbol><symbol id="i-message-circle" viewBox="0 0 24 24"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></symbol><symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /><path d="m15 5 4 4" /></symbol><symbol id="i-phone" viewBox="0 0 24 24"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384" /></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14" /><path d="M12 5v14" /></symbol><symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></symbol><symbol id="i-rotate-ccw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></symbol><symbol id="i-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" /><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" /><path d="M7 3v4a1 1 0 0 0 1 1h7" /></symbol><symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></symbol><symbol id="i-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /><circle cx="12" cy="12" r="3" /></symbol><symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /><path d="M20 2v4" /><path d="M22 4h-4" /><circle cx="4" cy="20" r="2" /></symbol><symbol id="i-spray-can" viewBox="0 0 24 24"><path d="M3 3h.01" /><path d="M7 5h.01" /><path d="M11 7h.01" /><path d="M3 7h.01" /><path d="M7 9h.01" /><path d="M3 11h.01" /><rect width="4" height="4" x="15" y="5" /><path d="m19 9 2 2v10c0 .6-.4 1-1 1h-6c-.6 0-1-.4-1-1V11l2-2" /><path d="m13 14 8-2" /><path d="m13 19 8-2" /></symbol><symbol id="i-star" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" /></symbol><symbol id="i-ticket-percent" viewBox="0 0 24 24"><path d="M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" /><path d="M9 9h.01" /><path d="m15 9-6 6" /><path d="M15 15h.01" /></symbol><symbol id="i-trending-up" viewBox="0 0 24 24"><path d="M16 7h6v6" /><path d="m22 7-8.5 8.5-5-5L2 17" /></symbol><symbol id="i-triangle-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></symbol><symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></symbol><symbol id="i-user-x" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="17" x2="22" y1="8" y2="13" /><line x1="22" x2="17" y1="8" y2="13" /></symbol><symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><path d="M16 3.128a4 4 0 0 1 0 7.744" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><circle cx="9" cy="7" r="4" /></symbol><symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /></symbol><symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z" /></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></symbol></svg>
 
 <!-- ===================== LOGIN ===================== -->
-<div id="login-view" class="grid min-h-dvh place-items-center bg-ink bg-[radial-gradient(80%_60%_at_80%_0%,#2a2620,transparent_60%)] px-4">
+<div id="login-view" class="grid min-h-dvh place-items-center bg-ink bg-[radial-gradient(70%_55%_at_80%_0%,rgba(212,175,55,.2),transparent_60%)] px-4">
   <form id="login-form" class="card w-full max-w-sm p-6" novalidate>
     <div class="flex items-center gap-3">
-      <span class="grid h-10 w-10 place-items-center rounded-xl border border-gold/60 font-serif font-bold text-gold-deep">SL</span>
-      <div><p class="font-serif text-lg font-bold leading-tight" id="login-hotel">Sai Lan Hotel</p><p class="text-xs text-muted">ระบบหลังบ้านสำหรับพนักงาน</p></div>
+      <img src="assets/logo-mark-light.png" alt="" class="h-14 w-auto">
+      <div><p class="text-[10px] font-semibold uppercase tracking-[.28em] text-gold-deep">Staff Console</p><p class="font-serif text-2xl font-medium leading-tight" id="login-hotel">Sai Lan Hotel</p><p class="text-xs text-muted">ระบบหลังบ้านสำหรับพนักงาน</p></div>
     </div>
     <div class="mt-6 space-y-3">
       <div><label class="label" for="staff-name">ชื่อพนักงาน (แสดงในบันทึกกิจกรรม)</label>
         <input id="staff-name" class="field" maxlength="40" autocomplete="name" placeholder="เช่น นก (Front)"></div>
       <div><label class="label" for="staff-key">รหัสพนักงาน</label>
         <input id="staff-key" class="field" type="password" autocomplete="current-password" placeholder="Staff Key"></div>
-      <label class="flex items-center gap-2 text-sm text-muted"><input id="remember-name" type="checkbox" class="h-4 w-4 accent-[#B08D3E]" checked> จำชื่อพนักงานในเครื่องนี้</label>
+      <label class="flex items-center gap-2 text-sm text-muted"><input id="remember-name" type="checkbox" class="h-4 w-4 accent-[#8E6E24]" checked> จำชื่อพนักงานในเครื่องนี้</label>
       <p id="login-error" class="min-h-[1.25rem] text-sm text-bad" role="alert"></p>
       <button id="login-btn" type="submit" class="btn btn-gold w-full !py-3"><span class="spinner" hidden></span><span>เข้าสู่ระบบ</span></button>
     </div>
@@ -144,8 +159,8 @@
 <div id="app-view" hidden class="min-h-dvh lg:grid lg:grid-cols-[236px_minmax(0,1fr)]">
   <aside class="sticky top-0 hidden h-dvh flex-col bg-ink p-4 text-ivory lg:flex">
     <div class="flex items-center gap-2.5 px-1">
-      <span class="grid h-9 w-9 place-items-center rounded-lg border border-gold/50 font-serif text-sm font-bold text-gold">SL</span>
-      <div class="min-w-0"><p class="truncate font-serif font-bold leading-tight" id="side-hotel">Sai Lan Hotel</p><p class="text-[11px] text-ivory/50">ระบบหลังบ้าน</p></div>
+      <img src="assets/logo-mark.png" alt="" class="h-10 w-auto">
+      <div class="min-w-0"><p class="truncate font-serif text-[17px] font-semibold tracking-[.05em] leading-tight" id="side-hotel">Sai Lan Hotel</p><p class="text-[11px] text-ivory/50">ระบบหลังบ้าน</p></div>
     </div>
     <nav class="mt-6 space-y-1" id="side-nav">
       <button class="nav-btn" data-nav="dashboard"><svg class="ic"><use href="#i-layout-dashboard"/></svg>ภาพรวมวันนี้<span class="ml-auto count" data-count="today" hidden></span></button>
@@ -162,10 +177,10 @@
   </aside>
 
   <div class="min-w-0">
-    <header class="sticky top-0 z-30 border-b border-line bg-[#F6F3EC]/92 backdrop-blur">
+    <header class="sticky top-0 z-30 border-b border-line bg-[#F3EFEA]/92 backdrop-blur">
       <div class="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <div class="min-w-0">
-          <h1 id="page-title" class="truncate font-serif text-lg font-bold sm:text-xl">ภาพรวมวันนี้</h1>
+          <h1 id="page-title" class="truncate font-serif text-xl font-medium sm:text-2xl">ภาพรวมวันนี้</h1>
           <p id="page-sub" class="truncate text-xs text-muted">—</p>
         </div>
         <div class="flex items-center gap-2">
@@ -263,8 +278,8 @@
             <div class="card p-4 sm:p-5 xl:sticky xl:top-24">
               <h2 class="h2">สรุป</h2>
               <dl id="nb-summary" class="kv mt-3"></dl>
-              <label class="mt-4 flex items-start gap-2 text-sm"><input id="nb-now" type="checkbox" class="mt-0.5 h-4 w-4 accent-[#B08D3E]"><span>เช็กอินทันที (Walk-in เข้าพักวันนี้)</span></label>
-              <label class="mt-2 flex items-start gap-2 text-sm"><input id="nb-paid" type="checkbox" class="mt-0.5 h-4 w-4 accent-[#B08D3E]"><span>ชำระเงินแล้ว</span></label>
+              <label class="mt-4 flex items-start gap-2 text-sm"><input id="nb-now" type="checkbox" class="mt-0.5 h-4 w-4 accent-[#8E6E24]"><span>เช็กอินทันที (Walk-in เข้าพักวันนี้)</span></label>
+              <label class="mt-2 flex items-start gap-2 text-sm"><input id="nb-paid" type="checkbox" class="mt-0.5 h-4 w-4 accent-[#8E6E24]"><span>ชำระเงินแล้ว</span></label>
               <p id="nb-error" class="mt-3 min-h-[1.25rem] text-sm text-bad" role="alert"></p>
               <button id="nb-submit" type="submit" class="btn btn-gold mt-1 w-full !py-3"><span class="spinner" hidden></span><span>บันทึกการจอง</span></button>
               <p class="mt-2 text-xs text-muted">ระบบตรวจห้องว่างซ้ำก่อนบันทึก และแจ้งกลุ่มแม่บ้านให้เตรียมห้อง (ถ้าเปิดไว้)</p>
@@ -912,17 +927,17 @@
     if (kind === 'checkin') formModal({ title: `เช็กอิน · ${esc(b.full_name)}`, okLabel: 'เช็กอิน', body: `
         <p class="text-sm text-muted">${esc(typeName(b.room_type))} · ${fmt(b.check_in)} → ${fmt(b.check_out)} · ${guests(b)}${b.special_requests ? `<br><span class="text-gold-deep">คำขอ: ${esc(b.special_requests)}</span>` : ''}</p>
         <div><label class="label" for="m-room">ห้อง</label><select id="m-room" name="room" class="field">${b.room_number ? '' : '<option value="">เลือกห้อง</option>'}${roomOptions(b)}</select></div>
-        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="paid" class="h-4 w-4 accent-[#B08D3E]" ${b.payment_status === 'Paid' ? 'checked' : ''}> รับชำระเงินแล้ว (${baht(b.price_total)})</label>`,
+        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="paid" class="h-4 w-4 accent-[#8E6E24]" ${b.payment_status === 'Paid' ? 'checked' : ''}> รับชำระเงินแล้ว (${baht(b.price_total)})</label>`,
       onOk: async (f) => { if (!f.get('room')) return 'เลือกห้องก่อน'; const r = await act('check_in', { booking_id: id, room_number: f.get('room'), paid: !!f.get('paid') }); return r ? null : ''; } });
     if (kind === 'checkout') formModal({ title: `เช็กเอาต์ · ห้อง ${esc(b.room_number || '-')}`, okLabel: 'เช็กเอาต์', tone: 'gold', body: `
         <p class="text-sm">${esc(b.full_name)} · ยอดชำระ <b>${baht(b.price_total)}</b> (${esc(PAY[b.payment_status] || 'ยังไม่ชำระ')})</p>
         ${b.status === 'Need Attention' ? `<p class="rounded-lg bg-[#FDECEA] px-3 py-2 text-sm text-bad">มีเรื่องที่แขกแจ้งค้างอยู่: ${esc(b.issue_category || '-')}</p>` : ''}
-        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="paid" class="h-4 w-4 accent-[#B08D3E]" ${b.payment_status === 'Paid' ? 'checked disabled' : 'checked'}> ชำระเงินครบแล้ว</label>
+        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="paid" class="h-4 w-4 accent-[#8E6E24]" ${b.payment_status === 'Paid' ? 'checked disabled' : 'checked'}> ชำระเงินครบแล้ว</label>
         <p class="text-xs text-muted">ห้องจะเปลี่ยนเป็น "รอทำความสะอาด" และแจ้งกลุ่มแม่บ้าน${S.settings.hk_notify_checkout && S.settings.housekeeping_group_set ? '' : ' (ปิดการแจ้งอยู่)'}</p>`,
       onOk: async (f) => { const r = await act('check_out', { booking_id: id, paid: b.payment_status === 'Paid' || !!f.get('paid') }); return r ? null : ''; } });
     if (kind === 'resolve') formModal({ title: `ปิดเรื่อง "${esc(b.issue_category || '-')}" · ห้อง ${esc(b.room_number || '-')}`, okLabel: 'ปิดเรื่อง', body: `
         <div><label class="label" for="m-note">สิ่งที่ทำ (แขกจะเห็นถ้าเลือกแจ้ง)</label><input id="m-note" name="note" class="field" maxlength="200" placeholder="เช่น ช่างเปลี่ยนรีโมทแอร์แล้ว"></div>
-        <label class="flex items-center gap-2 text-sm ${b.line_user_id ? '' : 'opacity-50'}"><input type="checkbox" name="notify" class="h-4 w-4 accent-[#B08D3E]" ${b.line_user_id ? '' : 'disabled'}> ส่งข้อความแจ้งแขกทาง LINE (ใช้โควตา 1 ข้อความ)</label>`,
+        <label class="flex items-center gap-2 text-sm ${b.line_user_id ? '' : 'opacity-50'}"><input type="checkbox" name="notify" class="h-4 w-4 accent-[#8E6E24]" ${b.line_user_id ? '' : 'disabled'}> ส่งข้อความแจ้งแขกทาง LINE (ใช้โควตา 1 ข้อความ)</label>`,
       onOk: async (f) => { const r = await act('resolve_issue', { booking_id: id, note: f.get('note') || '', notify_guest: !!f.get('notify') }); return r ? null : ''; } });
     if (kind === 'move') formModal({ title: `${INHOUSE.includes(b.status) ? 'ย้ายห้อง' : b.room_number ? 'เปลี่ยนห้อง' : 'จัดห้อง'} · ${esc(b.full_name)}`, okLabel: 'บันทึก', body: `
         <p class="text-sm text-muted">ตอนนี้: ${b.room_number ? 'ห้อง ' + esc(b.room_number) : 'ยังไม่ระบุห้อง'} · ${esc(typeName(b.room_type))}</p>
