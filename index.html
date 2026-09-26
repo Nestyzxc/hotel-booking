@@ -6,25 +6,25 @@
 
   <!-- ================================================================
        CONFIG — แก้ 3 ค่านี้ก่อนอัปโหลด (ทั้งหมดเป็นค่าสาธารณะ ไม่มีค่าลับ)
-       ห้ามใส่ Channel Access Token / Channel Secret / API key ในไฟล์นี้
+       ห้ามใส่ Channel Access Token / Channel Secret / API key / Staff Key ในไฟล์นี้
+       รูปภาพ ข้อมูลโรงแรม ราคา และห้องพัก แก้ใน Google Sheets (ชีต Config / RoomTypes) ไม่ต้องแก้ไฟล์นี้
        ================================================================ -->
   <script>
-    const N8N_WEBHOOK_URL  = 'https://gently-condition-lumpiness.ngrok-free.dev/webhook/booking';
+    const N8N_BASE_URL     = 'https://gently-condition-lumpiness.ngrok-free.dev/webhook'; // ไม่ต้องมี / ปิดท้าย
     const LIFF_ID          = '2011748537-D4uPXJ9B';   // LINE Login channel > แท็บ LIFF > LIFF ID
     const LINE_OA_BASIC_ID = '@416hldvs';    // OA Manager > Basic ID เช่น @123abcde
   </script>
 
-  <title>Golden Horizon · จองห้องพัก</title>
+  <title>Sai Lan Hotel · จองห้องพักตรงกับโรงแรม</title>
+  <meta name="description" content="จองห้องพัก Sai Lan Hotel ตรงกับโรงแรม ดูห้องว่างและราคาจริง รับใบยืนยันทาง LINE ทันที">
   <meta name="theme-color" content="#16161A">
 
-  <!-- Fonts: รองรับภาษาไทย -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600&family=Noto+Serif+Thai:wght@500;600;700&display=swap" rel="stylesheet">
 
   <!-- Tailwind CSS v4 (Play CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-
   <!-- LINE LIFF SDK v2 -->
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
@@ -36,721 +36,1436 @@
       --color-ink: #16161A;
       --color-ink-2: #1F1F25;
       --color-ivory: #FAF7F0;
+      --color-paper: #FFFFFF;
+      --color-line: #E7E0D1;
+      --color-muted: #6B665C;
+      --color-ok: #2E7D4F;
+      --color-bad: #B23A2E;
       --font-sans: "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
       --font-serif: "Noto Serif Thai", Georgia, serif;
     }
   </style>
 
   <style>
-    html { -webkit-text-size-adjust: 100%; }
-    body { background: radial-gradient(120% 90% at 80% 0%, #2a2620 0%, #16161A 55%) fixed, #16161A; }
-
-    /* Glassmorphism booking card */
-    .glass {
-      position: relative;
-      background: linear-gradient(145deg, rgba(255,255,255,.12), rgba(255,255,255,.04));
-      border: 1px solid rgba(255,255,255,.14);
-      box-shadow: 0 40px 90px -30px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,255,255,.14);
-      -webkit-backdrop-filter: blur(18px) saturate(140%);
-      backdrop-filter: blur(18px) saturate(140%);
-    }
-    .glass::before { /* เส้นทองบาง ๆ ขอบบนการ์ด */
-      content: ""; position: absolute; inset: 0 12% auto 12%; height: 1px;
-      background: linear-gradient(90deg, transparent, #F3D98B, transparent); opacity: .8;
-    }
-    @media (pointer: coarse) { /* มือถือ: blur เบาลง ประหยัด GPU */
-      .glass { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-    }
-    /* การ์ดลอย: เฉพาะจอที่มีเมาส์ และผู้ใช้ไม่ได้ปิด animation */
-    @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-      .float { animation: float 7s ease-in-out infinite; }
-      @keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
-    }
-
-    /* Form fields */
-    .label { display:block; font-size:.8rem; letter-spacing:.02em; color: rgba(250,247,240,.72); margin-bottom:.4rem; }
-    .field {
-      width:100%; font-size:16px; /* 16px กัน iOS zoom */
-      background: rgba(10,10,14,.45); color:#FAF7F0;
-      border:1px solid rgba(255,255,255,.14); border-radius:14px;
-      padding:.8rem 1rem; transition: border-color .15s, box-shadow .15s;
-    }
-    .field::placeholder { color: rgba(250,247,240,.35); }
-    .field:focus { outline:none; border-color:#D4AF6A; box-shadow:0 0 0 3px rgba(212,175,106,.25); }
-    .field[aria-invalid="true"] { border-color:#F28B82; box-shadow:0 0 0 3px rgba(242,139,130,.18); }
-    .field:disabled { opacity:.6; }
-    input[type="date"].field { color-scheme: dark; min-height: 3.05rem; padding-inline: .75rem; }
-    .field-error { color:#F6A59E; font-size:.78rem; margin-top:.35rem; min-height:1em; }
-
-    /* Room type radio cards */
-    .room-card {
-      display:flex; flex-direction:column; gap:.15rem; height:100%;
-      border:1px solid rgba(255,255,255,.14); border-radius:14px;
-      padding:.7rem .75rem; background: rgba(10,10,14,.35);
-      cursor:pointer; transition: border-color .15s, background .15s;
-    }
-    .room input:checked + .room-card { border-color:#D4AF6A; background: rgba(212,175,106,.14); }
-    .room input:focus-visible + .room-card { box-shadow:0 0 0 3px rgba(212,175,106,.35); }
-    .room-group[aria-invalid="true"] .room-card { border-color: rgba(242,139,130,.7); }
-
-    /* Buttons */
-    .btn-gold {
-      background: linear-gradient(135deg, #F3D98B 0%, #D4AF6A 45%, #B08D3E 100%);
-      color:#16161A; font-weight:600; border-radius:14px;
-      box-shadow: 0 12px 30px -10px rgba(212,175,106,.55);
-      transition: filter .15s, transform .1s, opacity .15s;
-    }
-    .btn-gold:hover { filter: brightness(1.05); }
-    .btn-gold:active { transform: translateY(1px); }
-    .btn-gold:disabled { opacity:.6; cursor:not-allowed; }
-    .btn-ghost { border:1px solid rgba(255,255,255,.2); border-radius:14px; color:#FAF7F0; }
-    .btn-ghost:hover { background: rgba(255,255,255,.06); }
-
-    .spinner {
-      width:1.1rem; height:1.1rem; border-radius:999px; flex:none;
-      border:2px solid currentColor; border-right-color: transparent;
-      animation: spin .7s linear infinite;
-    }
+    /* ลำดับ layer เดียวกับ Tailwind: utilities (เช่น hidden, lg:flex) ชนะคลาสส่วนประกอบด้านล่างเสมอ */
+    @layer theme, base, components, utilities;
+    :root { --topbar-h: 56px; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body { background: #FAF7F0; }
+    [hidden] { display: none !important; }
+    #search.raised { z-index:45; }   /* เปิดตัวเลือกผู้เข้าพัก → อยู่เหนือแถบหัวข้อ */
+    dialog { margin:auto; border:none; padding:0; background:transparent; color:inherit; }
+    dialog::backdrop { background: rgba(8,8,10,.7); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+    #lightbox { width:100vw; height:100dvh; max-width:100vw; max-height:100dvh; }
+    #lightbox img { max-width:100%; max-height:calc(100dvh - 140px); object-fit:contain; }
+    @keyframes shimmer { to { transform: translateX(100%); } }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Dialog */
-    /* margin:auto = จัดกึ่งกลาง (Tailwind reset ตั้ง margin:0 ทำให้ dialog ไปชิดมุมซ้ายบน) */
-    dialog { margin:auto; border:none; padding:0; background:transparent; color:inherit; max-width: min(92vw, 26rem); width:100%; }
-    dialog::backdrop { background: rgba(8,8,10,.65); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
-
-    #bg { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
-
     @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
       *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
       .spinner { animation-duration: .7s !important; }
+    }
+    @layer components {
+      .ic { width: 1.1em; height: 1.1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .ic-fill { fill: currentColor; }
+
+      .card { background: #fff; border: 1px solid #ECE5D6; border-radius: 20px; box-shadow: 0 18px 40px -28px rgba(22,22,26,.35); }
+      .h2 { font-family: "Noto Serif Thai", Georgia, serif; font-weight: 600; font-size: 1.45rem; line-height: 1.3; color: #16161A; }
+      .section { scroll-margin-top: calc(var(--topbar-h) + 64px); }
+
+      .btn-gold { display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+        background: linear-gradient(135deg, #F3D98B 0%, #D4AF6A 45%, #B08D3E 100%); color:#16161A; font-weight:600;
+        border-radius:14px; box-shadow: 0 12px 26px -12px rgba(176,141,62,.8); transition: filter .15s, transform .1s, opacity .15s; }
+      .btn-gold:hover { filter: brightness(1.05); }
+      .btn-gold:active { transform: translateY(1px); }
+      .btn-gold:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; filter: grayscale(.3); }
+      .btn-line { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; background:#06C755; color:#fff; font-weight:600; border-radius:14px; }
+      .btn-line:hover { filter: brightness(1.05); }
+      .btn-outline { display:inline-flex; align-items:center; justify-content:center; gap:.45rem; border:1px solid #D9CFBC; border-radius:14px; color:#16161A; background:#fff; }
+      .btn-outline:hover { border-color:#B08D3E; }
+      .btn-ghost-dark { display:inline-flex; align-items:center; gap:.45rem; border:1px solid rgba(255,255,255,.22); border-radius:999px; color:#FAF7F0; }
+      .btn-ghost-dark:hover { background: rgba(255,255,255,.08); }
+
+      .field { width:100%; font-size:16px; background:#fff; color:#16161A; border:1px solid #D9CFBC; border-radius:14px; padding:.75rem .9rem; min-height:3.1rem;
+        transition: border-color .15s, box-shadow .15s; }
+      .field::placeholder { color:#A39E93; }
+      .field:focus, .field:focus-visible { outline:none; border-color:#B08D3E; box-shadow:0 0 0 3px rgba(212,175,106,.28); }
+      .field[aria-invalid="true"] { border-color:#D2554A; box-shadow:0 0 0 3px rgba(210,85,74,.14); }
+      .field:disabled { background:#F4F1EA; color:#8A857B; }
+      .label { display:block; font-size:.8rem; color:#6B665C; margin-bottom:.35rem; font-weight:500; }
+      .field-error { color:#B23A2E; font-size:.78rem; margin-top:.3rem; min-height:1em; }
+      select.field { appearance:none; background-image: linear-gradient(45deg, transparent 50%, #8A857B 50%), linear-gradient(135deg, #8A857B 50%, transparent 50%);
+        background-position: calc(100% - 20px) 55%, calc(100% - 15px) 55%; background-size: 5px 5px; background-repeat:no-repeat; padding-right:2.2rem; }
+
+      .chip { display:inline-flex; align-items:center; gap:.35rem; border:1px solid #E7E0D1; background:#FBF9F4; color:#3D3A34; border-radius:999px; padding:.28rem .7rem; font-size:.8rem; }
+      .chip-toggle { cursor:pointer; user-select:none; }
+      .chip-toggle[aria-pressed="true"] { background:#16161A; color:#F3D98B; border-color:#16161A; }
+      .badge-ok { color:#2E7D4F; }
+      .pill { display:inline-flex; align-items:center; gap:.3rem; border-radius:999px; padding:.18rem .6rem; font-size:.75rem; font-weight:600; }
+
+      /* Gallery */
+      .gallery { display:grid; gap:8px; border-radius:22px; overflow:hidden; }
+      .g-item { position:relative; overflow:hidden; background:#26231E; cursor:zoom-in; border:0; padding:0; display:block; width:100%; }
+      .g-item img { width:100%; height:100%; object-fit:cover; display:block; transition: transform .5s ease; }
+      .g-item:hover img { transform: scale(1.04); }
+      @media (min-width: 768px) {
+        .gallery { grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 180px 180px; }
+        .gallery .g-item:first-child { grid-row: span 2; }
+        .gallery .g-item { height:100%; }
+      }
+      @media (max-width: 767.98px) {
+        .gallery { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; border-radius:18px; scrollbar-width:none; }
+        .gallery::-webkit-scrollbar { display:none; }
+        .gallery .g-item { flex: 0 0 88%; aspect-ratio: 4/3; scroll-snap-align: start; border-radius:18px; }
+        .gallery .g-item:nth-child(n+6) { display:none; }
+      }
+      /* Placeholder (ยังไม่ใส่รูป) */
+      .ph { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.4rem; color:rgba(250,247,240,.85);
+        background: radial-gradient(120% 90% at 20% 0%, rgba(243,217,139,.28), transparent 55%), linear-gradient(145deg, #2C2822, #1B1A18); text-align:center; padding:1rem; }
+      .ph::after { content:""; position:absolute; inset:0; opacity:.14;
+        background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.5) 0 1px, transparent 1px 14px); }
+      .ph.ph-1 { background: radial-gradient(120% 90% at 80% 10%, rgba(120,170,190,.35), transparent 55%), linear-gradient(145deg, #1E2A30, #15191C); }
+      .ph.ph-2 { background: radial-gradient(120% 90% at 30% 100%, rgba(212,175,106,.35), transparent 55%), linear-gradient(145deg, #2E2519, #191612); }
+      .ph.ph-3 { background: radial-gradient(120% 90% at 70% 90%, rgba(140,160,120,.32), transparent 55%), linear-gradient(145deg, #232A20, #171A15); }
+      .ph.ph-4 { background: radial-gradient(120% 90% at 10% 80%, rgba(190,130,110,.32), transparent 55%), linear-gradient(145deg, #2E221E, #191413); }
+      .ph .ph-label { font-family:"Noto Serif Thai", Georgia, serif; font-weight:600; font-size:1rem; position:relative; z-index:1; }
+      .ph .ph-note { font-size:.7rem; opacity:.65; position:relative; z-index:1; }
+      .ph .ic { position:relative; z-index:1; width:1.6rem; height:1.6rem; color:#F3D98B; }
+      .g-count { position:absolute; right:.6rem; bottom:.6rem; z-index:2; }
+
+      /* Rating badge */
+      .score { display:grid; place-items:center; min-width:3rem; height:3rem; border-radius:14px 14px 14px 4px; background:#D4AF6A; color:#16161A; font-weight:700; font-size:1.2rem; }
+
+      /* Guests popover */
+      .guests-pop { position:absolute; z-index:40; top:calc(100% + 6px); left:0; right:0; min-width:260px; padding:1rem;
+        scroll-margin-top: calc(var(--topbar-h) + 64px); scroll-margin-bottom: 16px; }
+      @media (max-width: 767.98px) {   /* มือถือ: แผ่นเลือกจำนวนผู้เข้าพักเลื่อนขึ้นจากด้านล่าง */
+        .guests-pop { position:fixed; top:auto; bottom:0; left:0; right:0; z-index:70; border-radius:22px 22px 0 0;
+          padding:1.1rem 1.25rem max(1.1rem, env(safe-area-inset-bottom)); box-shadow:0 -24px 50px -10px rgba(0,0,0,.35); }
+      }
+      .stepper { display:flex; align-items:center; gap:.75rem; }
+      .stepper button { width:2.3rem; height:2.3rem; border-radius:999px; border:1px solid #D9CFBC; display:grid; place-items:center; background:#fff; }
+      .stepper button:disabled { opacity:.35; }
+      .stepper output { min-width:1.5rem; text-align:center; font-weight:600; }
+
+      /* Tabs */
+      .tab { white-space:nowrap; padding:.85rem .9rem; font-size:.9rem; color:#6B665C; border-bottom:2px solid transparent; }
+      .tab:hover { color:#16161A; }
+      .tab.active { color:#16161A; border-bottom-color:#D4AF6A; font-weight:600; }
+
+      /* Room media */
+      .room-media { position:relative; background:#1B1A18; min-height:210px; }
+      .room-media .rm-track { display:flex; height:100%; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; }
+      .room-media .rm-track::-webkit-scrollbar { display:none; }
+      .room-media .rm-slide { position:relative; flex:0 0 100%; scroll-snap-align:start; min-height:210px; border:0; padding:0; cursor:zoom-in; }
+      .room-media img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+      .rm-dots { position:absolute; bottom:.55rem; left:0; right:0; display:flex; justify-content:center; gap:5px; z-index:2; pointer-events:none; }
+      .rm-dots i { width:6px; height:6px; border-radius:99px; background:rgba(255,255,255,.45); }
+      .rm-dots i.on { background:#fff; width:14px; }
+      .room.soldout .room-media { filter: grayscale(.85); opacity:.75; }
+
+      .skeleton { position:relative; overflow:hidden; background:#EFEAE0; border-radius:12px; }
+      .skeleton::after { content:""; position:absolute; inset:0; transform:translateX(-100%);
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent); animation: shimmer 1.3s infinite; }
+
+      .spinner { width:1.1rem; height:1.1rem; border-radius:999px; flex:none; border:2px solid currentColor; border-right-color:transparent; animation: spin .7s linear infinite; }
+
+
+      .price-old { text-decoration: line-through; color:#9A948A; }
+      .rate-bar { height:8px; border-radius:99px; background:#EFEAE0; overflow:hidden; }
+      .rate-bar > i { display:block; height:100%; background:#D4AF6A; border-radius:99px; }
+
+      #bg { pointer-events:none; }
+      .hero-glow { background: radial-gradient(90% 70% at 85% 0%, rgba(212,175,106,.18), transparent 60%), radial-gradient(60% 60% at 0% 100%, rgba(212,175,106,.08), transparent 60%); }
+      .mobile-cta { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
     }
   </style>
 </head>
 
-<body class="min-h-dvh text-ivory font-sans antialiased">
-  <!-- Three.js golden particles -->
-  <canvas id="bg" aria-hidden="true"></canvas>
-  <div class="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(80%_60%_at_50%_120%,rgba(0,0,0,.55),transparent)]"></div>
+<body class="min-h-dvh font-sans text-ink antialiased">
+<!-- Icons: Lucide (ISC License) https://lucide.dev -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none"><symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></symbol><symbol id="i-baby" viewBox="0 0 24 24"><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5" /><path d="M15 12h.01" /><path d="M19.38 6.813A9 9 0 0 1 20.8 10.2a2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1" /><path d="M9 12h.01" /></symbol><symbol id="i-badge-check" viewBox="0 0 24 24"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" /><path d="m16 9-5.5 5.5L8 12" /></symbol><symbol id="i-bath" viewBox="0 0 24 24"><path d="M10 4 8 6" /><path d="M17 19v2" /><path d="M2 12h20" /><path d="M7 19v2" /><path d="M9 5 7.621 3.621A2.121 2.121 0 0 0 4 5v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5" /></symbol><symbol id="i-bed-double" viewBox="0 0 24 24"><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8" /><path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" /><path d="M12 4v6" /><path d="M2 18h20" /></symbol><symbol id="i-bell-ring" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0" /><path d="M22 8c0-2.3-.8-4.3-2-6" /><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /><path d="M4 2C2.8 3.7 2 5.7 2 8" /></symbol><symbol id="i-calendar-check" viewBox="0 0 24 24"><path d="M8 2v3" /><path d="M16 2v3" /><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="m9 15 2 2 4-4" /></symbol><symbol id="i-calendar-days" viewBox="0 0 24 24"><path d="M8 2v3" /><path d="M16 2v3" /><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M8 13h.01" /><path d="M12 13h.01" /><path d="M16 13h.01" /><path d="M8 17h.01" /><path d="M12 17h.01" /><path d="M16 17h.01" /></symbol><symbol id="i-calendar-x" viewBox="0 0 24 24"><path d="M8 2v3" /><path d="M16 2v3" /><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="m14 13-4 4" /><path d="m10 13 4 4" /></symbol><symbol id="i-camera" viewBox="0 0 24 24"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z" /><circle cx="12" cy="13" r="3" /></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></symbol><symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></symbol><symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></symbol><symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></symbol><symbol id="i-cigarette-off" viewBox="0 0 24 24"><path d="M12 12H3a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h13" /><path d="M18 8c0-2.5-2-2.5-2-5" /><path d="m2 2 20 20" /><path d="M21 12a1 1 0 0 1 1 1v2a1 1 0 0 1-.5.866" /><path d="M22 8c0-2.5-2-2.5-2-5" /><path d="M7 12v4" /></symbol><symbol id="i-circle-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></symbol><symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="m16 9-5.5 5.5L8 12" /></symbol><symbol id="i-circle-parking" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M9 17V7h4a3 3 0 0 1 0 6H9" /></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></symbol><symbol id="i-coffee" viewBox="0 0 24 24"><path d="M10 2v2" /><path d="M14 2v2" /><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1" /><path d="M6 2v2" /></symbol><symbol id="i-credit-card" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /><path d="M6 14h2" /></symbol><symbol id="i-dumbbell" viewBox="0 0 24 24"><path d="M17.596 12.768a2 2 0 1 0 2.829-2.829l-1.768-1.767a2 2 0 0 0 2.828-2.829l-2.828-2.828a2 2 0 0 0-2.829 2.828l-1.767-1.768a2 2 0 1 0-2.829 2.829z" /><path d="m2.5 21.5 1.4-1.4" /><path d="m20.1 3.9 1.4-1.4" /><path d="M5.343 21.485a2 2 0 1 0 2.829-2.828l1.767 1.768a2 2 0 1 0 2.829-2.829l-6.364-6.364a2 2 0 1 0-2.829 2.829l1.768 1.767a2 2 0 0 0-2.828 2.829z" /><path d="m9.6 14.4 4.8-4.8" /></symbol><symbol id="i-external-link" viewBox="0 0 24 24"><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></symbol><symbol id="i-gift" viewBox="0 0 24 24"><path d="M12 7v14" /><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8" /><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5" /><rect x="3" y="7" width="18" height="4" rx="1" /></symbol><symbol id="i-images" viewBox="0 0 24 24"><path d="m22 11-1.296-1.296a2.4 2.4 0 0 0-3.408 0L11 16" /><path d="M4 8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2" /><circle cx="13" cy="7" r="1" fill="currentColor" /><rect x="8" y="2" width="14" height="14" rx="2" /></symbol><symbol id="i-lamp-desk" viewBox="0 0 24 24"><path d="M10.293 2.293a1 1 0 0 1 1.414 0l2.5 2.5 5.994 1.227a1 1 0 0 1 .506 1.687l-7 7a1 1 0 0 1-1.687-.506l-1.227-5.994-2.5-2.5a1 1 0 0 1 0-1.414z" /><path d="m14.207 4.793-3.414 3.414" /><path d="M3 20a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" /><path d="m9.086 6.5-4.793 4.793a1 1 0 0 0-.18 1.17L7 18" /></symbol><symbol id="i-log-in" viewBox="0 0 24 24"><path d="m10 17 5-5-5-5" /><path d="M15 12H3" /><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /></symbol><symbol id="i-map-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /><circle cx="12" cy="10" r="3" /></symbol><symbol id="i-maximize" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" /><path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M16 21h3a2 2 0 0 0 2-2v-3" /></symbol><symbol id="i-message-circle" viewBox="0 0 24 24"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></symbol><symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol><symbol id="i-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2L8 3z" /></symbol><symbol id="i-party-popper" viewBox="0 0 24 24"><path d="M5.8 11.3 2 22l10.7-3.79" /><path d="M4 3h.01" /><path d="M22 8h.01" /><path d="M15 2h.01" /><path d="M22 20h.01" /><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10" /><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17" /><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7" /><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z" /></symbol><symbol id="i-phone" viewBox="0 0 24 24"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384" /></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14" /><path d="M12 5v14" /></symbol><symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></symbol><symbol id="i-refrigerator" viewBox="0 0 24 24"><path d="M5 6a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6Z" /><path d="M5 10h14" /><path d="M15 7v6" /></symbol><symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></symbol><symbol id="i-shower-head" viewBox="0 0 24 24"><path d="m4 4 2.5 2.5" /><path d="M13.5 6.5a4.95 4.95 0 0 0-7 7" /><path d="M15 5 5 15" /><path d="M14 17v.01" /><path d="M10 16v.01" /><path d="M13 13v.01" /><path d="M16 10v.01" /><path d="M11 20v.01" /><path d="M17 14v.01" /><path d="M20 11v.01" /></symbol><symbol id="i-snowflake" viewBox="0 0 24 24"><path d="m10 20-1.25-2.5L6 18" /><path d="M10 4 8.75 6.5 6 6" /><path d="m14 20 1.25-2.5L18 18" /><path d="m14 4 1.25 2.5L18 6" /><path d="m17 21-3-6h-4" /><path d="m17 3-3 6 1.5 3" /><path d="M2 12h6.5L10 9" /><path d="m20 10-1.5 2 1.5 2" /><path d="M22 12h-6.5L14 15" /><path d="m4 10 1.5 2L4 14" /><path d="m7 21 3-6-1.5-3" /><path d="m7 3 3 6h4" /></symbol><symbol id="i-sofa" viewBox="0 0 24 24"><path d="M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3" /><path d="M2 16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z" /><path d="M4 18v2" /><path d="M20 18v2" /><path d="M12 4v9" /></symbol><symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /><path d="M20 2v4" /><path d="M22 4h-4" /><circle cx="4" cy="20" r="2" /></symbol><symbol id="i-star" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" /></symbol><symbol id="i-ticket-percent" viewBox="0 0 24 24"><path d="M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" /><path d="M9 9h.01" /><path d="m15 9-6 6" /><path d="M15 15h.01" /></symbol><symbol id="i-triangle-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></symbol><symbol id="i-tv" viewBox="0 0 24 24"><path d="m17 2-5 5-5-5" /><rect width="20" height="15" x="2" y="7" rx="2" /></symbol><symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></symbol><symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><path d="M16 3.128a4 4 0 0 1 0 7.744" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><circle cx="9" cy="7" r="4" /></symbol><symbol id="i-utensils" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" /><path d="M7 2v20" /><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" /></symbol><symbol id="i-waves" viewBox="0 0 24 24"><path d="M2 12q2.5 2 5 0t5 0 5 0 5 0" /><path d="M2 19q2.5 2 5 0t5 0 5 0 5 0" /><path d="M2 5q2.5 2 5 0t5 0 5 0 5 0" /></symbol><symbol id="i-wifi" viewBox="0 0 24 24"><path d="M12 20h.01" /><path d="M2 8.82a15 15 0 0 1 20 0" /><path d="M5 12.859a10 10 0 0 1 14 0" /><path d="M8.5 16.429a5 5 0 0 1 7 0" /></symbol><symbol id="i-wind" viewBox="0 0 24 24"><path d="M12.8 19.6A2 2 0 1 0 14 16H2" /><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2" /><path d="M9.8 4.4A2 2 0 1 1 11 8H2" /></symbol><symbol id="i-wine" viewBox="0 0 24 24"><path d="M8 22h8" /><path d="M7 10h10" /><path d="M12 15v7" /><path d="M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z" /></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></symbol></svg>
 
-  <main class="relative z-10 mx-auto grid min-h-dvh max-w-6xl items-center gap-8 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-14">
-
-    <!-- ===== Hero ===== -->
-    <section class="pt-4 lg:pt-0">
-      <p class="mb-3 text-xs font-medium tracking-[.35em] text-gold">GOLDEN HORIZON HOTEL</p>
-      <h1 class="font-serif text-[2rem] leading-tight font-semibold sm:text-5xl lg:text-6xl">
-        พักผ่อนเหนือระดับ<br><span class="text-gold">ดูแลคุณทุกช่วงเวลา</span>
-      </h1>
-      <p class="mt-4 max-w-lg text-[15px] leading-relaxed text-ivory/70 sm:text-base">
-        จองตรงกับโรงแรม รับใบยืนยันทาง LINE ทันที และบอกความต้องการพิเศษกับเราได้ตลอดการเข้าพัก
-      </p>
-      <ul class="mt-6 hidden space-y-3 text-sm text-ivory/80 sm:block">
-        <li class="flex items-center gap-3"><span class="grid h-8 w-8 place-items-center rounded-full border border-gold/40 text-gold">✓</span>ใบยืนยันการจองส่งเข้า LINE อัตโนมัติ</li>
-        <li class="flex items-center gap-3"><span class="grid h-8 w-8 place-items-center rounded-full border border-gold/40 text-gold">✓</span>แจ้งคำขอระหว่างเข้าพักผ่านแชทได้ตลอด 24 ชม.</li>
-        <li class="flex items-center gap-3"><span class="grid h-8 w-8 place-items-center rounded-full border border-gold/40 text-gold">✓</span>จองตรง ไม่ผ่านตัวกลาง</li>
-      </ul>
-    </section>
-
-    <!-- ===== Booking Card ===== -->
-    <section class="glass float rounded-3xl p-5 sm:p-7" aria-labelledby="card-title">
-      <div class="mb-5 flex items-center justify-between gap-3">
-        <h2 id="card-title" class="font-serif text-xl font-semibold sm:text-2xl">จองห้องพัก</h2>
-        <span id="preview-badge" hidden class="rounded-full border border-gold/50 px-2.5 py-0.5 text-[11px] text-gold">PREVIEW</span>
+<!-- ===================== HOME (ดูโรงแรม + เลือกห้อง) ===================== -->
+<div id="home-view">
+  <header id="topbar" class="sticky top-0 z-50 h-[var(--topbar-h)] border-b border-white/10 bg-ink/95 text-ivory backdrop-blur">
+    <div class="mx-auto flex h-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+      <a href="#" class="flex items-center gap-2.5" aria-label="หน้าแรก">
+        <span class="grid h-8 w-8 place-items-center rounded-lg border border-gold/50 font-serif text-sm font-bold text-gold">SL</span>
+        <span class="leading-tight"><span class="block text-[11px] tracking-[.3em] text-gold">SAI LAN</span><span class="block text-[10px] tracking-[.35em] text-ivory/60">HOTEL</span></span>
+      </a>
+      <button id="topbar-search" type="button" class="hidden min-w-0 items-center gap-2 truncate rounded-full border border-white/15 px-3 py-1.5 text-xs text-ivory/85 sm:inline-flex">
+        <svg class="ic"><use href="#i-calendar-days"/></svg><span id="topbar-summary" class="truncate">เลือกวันที่เข้าพัก</span>
+      </button>
+      <div class="flex items-center gap-2">
+        <span id="preview-badge" hidden class="rounded-full border border-gold/60 px-2 py-0.5 text-[10px] tracking-wider text-gold">PREVIEW</span>
+        <div id="topbar-user" class="flex items-center gap-2 text-sm"></div>
       </div>
+    </div>
+  </header>
 
-      <!-- State: loading -->
-      <div id="state-loading" class="flex items-center gap-3 py-10 text-ivory/70" role="status">
-        <span class="spinner text-gold"></span> กำลังเชื่อมต่อ LINE…
+  <!-- Hero + Gallery -->
+  <section id="hero" class="relative isolate overflow-hidden bg-ink text-ivory">
+    <canvas id="bg" aria-hidden="true" class="absolute inset-0 -z-10 h-full w-full"></canvas>
+    <div class="hero-glow absolute inset-0 -z-20"></div>
+    <div class="mx-auto max-w-6xl px-4 pb-24 pt-4 sm:px-6 sm:pt-6">
+      <div id="gallery" class="gallery" aria-label="รูปภาพโรงแรม"></div>
+
+      <div class="mt-5 flex flex-wrap items-end justify-between gap-4">
+        <div class="min-w-0">
+          <div id="hotel-stars" class="flex items-center gap-0.5 text-gold" aria-label=""></div>
+          <h1 id="hotel-name" class="mt-1 font-serif text-[1.9rem] font-semibold leading-tight sm:text-4xl">Sai Lan Hotel</h1>
+          <p id="hotel-tagline" class="mt-1 text-[15px] text-ivory/75"></p>
+          <a id="hotel-address" href="#location" class="mt-2 inline-flex max-w-full items-start gap-1.5 text-sm text-ivory/75 hover:text-gold-soft">
+            <svg class="ic mt-0.5"><use href="#i-map-pin"/></svg><span id="hotel-address-text" class="min-w-0">—</span>
+          </a>
+        </div>
+        <a id="rating-badge" href="#reviews" hidden class="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+          <span id="rating-score" class="score">–</span>
+          <span class="text-sm leading-tight"><span id="rating-word" class="block font-semibold text-ivory">—</span>
+            <span id="rating-count" class="block text-xs text-ivory/60"></span></span>
+        </a>
       </div>
+    </div>
+  </section>
 
-      <!-- State: opened outside LINE (ยังไม่ได้ล็อกอิน) -->
-      <div id="state-outside" hidden class="py-4 text-center">
-        <div class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[#06C755] text-2xl font-bold text-white">L</div>
-        <p class="font-medium">จองผ่านบัญชี LINE ของคุณ</p>
-        <p class="mt-1 text-sm text-ivory/60">ระบบใช้บัญชี LINE เพื่อส่งใบยืนยันการจองและดูแลคุณระหว่างเข้าพัก</p>
-        <a id="open-in-line" href="#" class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#06C755] px-5 py-3.5 font-semibold text-white hover:brightness-105">เปิดใน LINE</a>
-        <button id="login-web" type="button" class="btn-ghost mt-3 w-full px-5 py-3 text-sm">เข้าสู่ระบบด้วย LINE แล้วจองบนเว็บนี้</button>
-        <button id="copy-liff" type="button" class="mt-4 text-xs text-ivory/60 underline underline-offset-4">คัดลอกลิงก์ไปเปิดบนมือถือ</button>
+  <!-- Search -->
+  <section id="search" class="relative z-30 mx-auto -mt-16 max-w-6xl px-4 sm:px-6" aria-label="ค้นหาห้องว่าง">
+    <form id="search-form" novalidate class="card grid gap-3 p-3 sm:p-4 md:grid-cols-[1fr_1fr_1.15fr_auto] md:items-end">
+      <div class="grid grid-cols-2 gap-3 md:contents">
+        <div class="min-w-0">
+          <label class="label" for="ci">เช็กอิน</label>
+          <input id="ci" type="date" class="field" required>
+        </div>
+        <div class="min-w-0">
+          <label class="label" for="co">เช็กเอาต์</label>
+          <input id="co" type="date" class="field" required>
+        </div>
       </div>
-
-      <!-- State: error -->
-      <div id="state-error" hidden class="py-6 text-center">
-        <p class="font-medium text-[#F6A59E]">เกิดข้อผิดพลาด</p>
-        <p id="state-error-msg" class="mt-2 text-sm text-ivory/70"></p>
-        <button type="button" onclick="location.reload()" class="btn-ghost mt-5 w-full px-5 py-3 text-sm">ลองใหม่</button>
-      </div>
-
-      <!-- State: form -->
-      <form id="booking-form" hidden novalidate class="space-y-4">
-        <!-- LINE profile chip -->
-        <div class="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
-          <img id="profile-pic" alt="" class="h-9 w-9 rounded-full bg-white/10 object-cover" hidden>
-          <div id="profile-fallback" class="grid h-9 w-9 place-items-center rounded-full bg-gold/20 text-gold">★</div>
-          <div class="min-w-0 text-sm">
-            <p class="text-ivory/55 text-xs">จองผ่านบัญชี LINE</p>
-            <p id="profile-name" class="truncate font-medium">—</p>
-          </div>
-        </div>
-
-        <!-- Not-a-friend warning -->
-        <div id="friend-warn" hidden class="rounded-2xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm">
-          <p class="font-medium text-gold-soft">ยังไม่ได้เพิ่มโรงแรมเป็นเพื่อน</p>
-          <p class="mt-1 text-ivory/70">ใบยืนยันและการดูแลระหว่างเข้าพักส่งทาง LINE ได้เฉพาะเพื่อนเท่านั้น</p>
-          <a id="add-friend" href="#" hidden class="mt-2 inline-block font-medium text-gold underline underline-offset-4">เพิ่มเพื่อนตอนนี้</a>
-        </div>
-
-        <div>
-          <label class="label" for="full_name">ชื่อ-นามสกุล</label>
-          <input class="field" id="full_name" name="full_name" type="text" autocomplete="name" maxlength="100" placeholder="เช่น สมชาย ใจดี" aria-describedby="err-full_name">
-          <p class="field-error" id="err-full_name" aria-live="polite"></p>
-        </div>
-
-        <div class="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label class="label" for="phone">เบอร์มือถือ</label>
-            <input class="field" id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="08xxxxxxxx" aria-describedby="err-phone">
-            <p class="field-error" id="err-phone" aria-live="polite"></p>
-          </div>
-          <div>
-            <label class="label" for="email">อีเมล</label>
-            <input class="field" id="email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="120" placeholder="name@email.com" aria-describedby="err-email">
-            <p class="field-error" id="err-email" aria-live="polite"></p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="label" for="check_in">เช็กอิน</label>
-            <input class="field" id="check_in" name="check_in" type="date" aria-describedby="err-check_in">
-            <p class="field-error" id="err-check_in" aria-live="polite"></p>
-          </div>
-          <div>
-            <label class="label" for="check_out">เช็กเอาต์</label>
-            <input class="field" id="check_out" name="check_out" type="date" aria-describedby="err-check_out">
-            <p class="field-error" id="err-check_out" aria-live="polite"></p>
-          </div>
-        </div>
-
-        <fieldset>
-          <legend class="label">ประเภทห้อง</legend>
-          <div id="room-group" class="room-group grid grid-cols-3 gap-2" aria-describedby="err-room_type">
-            <label class="room">
-              <input class="sr-only" type="radio" name="room_type" value="Superior">
-              <span class="room-card"><span class="text-sm font-semibold">Superior</span><span class="text-[11px] leading-snug text-ivory/55">28 ตร.ม.<br>วิวเมือง</span></span>
-            </label>
-            <label class="room">
-              <input class="sr-only" type="radio" name="room_type" value="Deluxe" checked>
-              <span class="room-card"><span class="text-sm font-semibold">Deluxe</span><span class="text-[11px] leading-snug text-ivory/55">36 ตร.ม.<br>ระเบียงส่วนตัว</span></span>
-            </label>
-            <label class="room">
-              <input class="sr-only" type="radio" name="room_type" value="Suite">
-              <span class="room-card"><span class="text-sm font-semibold">Suite</span><span class="text-[11px] leading-snug text-ivory/55">60 ตร.ม.<br>ห้องนั่งเล่นแยก</span></span>
-            </label>
-          </div>
-          <p class="field-error" id="err-room_type" aria-live="polite"></p>
-        </fieldset>
-
-        <p id="stay-summary" class="rounded-xl bg-black/20 px-4 py-2.5 text-sm text-ivory/75" hidden></p>
-
-        <div>
-          <label class="flex items-start gap-3 text-sm text-ivory/75">
-            <input id="consent" name="consent" type="checkbox" class="mt-1 h-4 w-4 accent-[#D4AF6A]" aria-describedby="err-consent">
-            <span>ยินยอมให้โรงแรมใช้ข้อมูลนี้เพื่อการจอง และติดต่อฉันผ่าน LINE ระหว่างการเข้าพัก</span>
-          </label>
-          <p class="field-error" id="err-consent" aria-live="polite"></p>
-        </div>
-
-        <button id="submit-btn" type="submit" class="btn-gold flex w-full items-center justify-center gap-2 px-5 py-3.5 text-base">
-          <span id="submit-spinner" class="spinner" hidden></span>
-          <span id="submit-label">ยืนยันการจอง</span>
+      <div class="relative">
+        <span class="label" id="guests-label">ผู้เข้าพัก</span>
+        <button id="guests-btn" type="button" class="field flex items-center justify-between gap-2 text-left" aria-haspopup="dialog" aria-expanded="false" aria-labelledby="guests-label guests-text">
+          <span class="flex min-w-0 items-center gap-2"><svg class="ic text-gold-deep"><use href="#i-users"/></svg><span id="guests-text" class="truncate">2 ผู้ใหญ่</span></span>
+          <svg class="ic text-muted"><use href="#i-chevron-down"/></svg>
         </button>
-      </form>
-    </section>
+        <div id="guests-pop" hidden class="guests-pop card" role="dialog" aria-label="เลือกจำนวนผู้เข้าพัก">
+          <div class="flex items-center justify-between py-2">
+            <div><p class="font-medium">ผู้ใหญ่</p><p class="text-xs text-muted">อายุ 12 ปีขึ้นไป</p></div>
+            <div class="stepper"><button type="button" data-step="adults:-1" aria-label="ลดผู้ใหญ่"><svg class="ic"><use href="#i-minus"/></svg></button>
+              <output id="adults-out">2</output><button type="button" data-step="adults:1" aria-label="เพิ่มผู้ใหญ่"><svg class="ic"><use href="#i-plus"/></svg></button></div>
+          </div>
+          <div class="flex items-center justify-between border-t border-line py-2">
+            <div><p class="font-medium">เด็ก</p><p class="text-xs text-muted">อายุต่ำกว่า 12 ปี</p></div>
+            <div class="stepper"><button type="button" data-step="children:-1" aria-label="ลดเด็ก"><svg class="ic"><use href="#i-minus"/></svg></button>
+              <output id="children-out">0</output><button type="button" data-step="children:1" aria-label="เพิ่มเด็ก"><svg class="ic"><use href="#i-plus"/></svg></button></div>
+          </div>
+          <button id="guests-done" type="button" class="btn-gold mt-2 w-full py-2.5 text-sm">เสร็จ</button>
+        </div>
+      </div>
+      <button type="submit" class="btn-gold h-[3.1rem] px-6"><svg class="ic"><use href="#i-search"/></svg>ค้นหาห้องว่าง</button>
+      <p id="search-note" class="text-sm text-muted md:col-span-4" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <!-- Tabs -->
+  <nav id="tabs" class="sticky top-[var(--topbar-h)] z-40 mt-6 border-b border-line bg-ivory/95 backdrop-blur" aria-label="หัวข้อ">
+    <div class="mx-auto flex max-w-6xl overflow-x-auto px-2 sm:px-4">
+      <a class="tab" href="#rooms">ห้องพัก</a>
+      <a class="tab" href="#facilities">สิ่งอำนวยความสะดวก</a>
+      <a class="tab" href="#policies">นโยบาย</a>
+      <a class="tab" href="#location">ที่ตั้ง</a>
+      <a class="tab" href="#reviews">รีวิว</a>
+    </div>
+  </nav>
+
+  <main class="mx-auto grid max-w-6xl gap-8 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+    <div class="min-w-0 space-y-10">
+
+      <!-- Rooms -->
+      <section id="rooms" class="section" aria-labelledby="rooms-title">
+        <div class="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 id="rooms-title" class="h2">เลือกห้องพัก</h2>
+            <p id="rooms-sub" class="mt-1 text-sm text-muted">ราคารวมภาษีและค่าบริการแล้ว · ชำระที่โรงแรม</p>
+          </div>
+        </div>
+
+        <div id="promo-bar" class="mt-4 rounded-2xl border border-dashed border-gold/60 bg-[#FFFBF0] p-3 sm:p-4">
+          <form id="promo-form" class="flex flex-wrap items-center gap-2" novalidate>
+            <label for="promo-input" class="flex items-center gap-2 text-sm font-medium text-gold-deep"><svg class="ic"><use href="#i-ticket-percent"/></svg>มีโค้ดส่วนลด?</label>
+            <div class="flex min-w-[230px] flex-1 gap-2">
+              <input id="promo-input" class="field !min-h-[2.6rem] !py-2 uppercase" maxlength="30" placeholder="เช่น WELCOME10 หรือโค้ดจาก LINE" autocomplete="off" autocapitalize="characters">
+              <button type="submit" class="btn-outline shrink-0 px-4 text-sm">ใช้โค้ด</button>
+            </div>
+          </form>
+          <p id="promo-status" class="mt-2 text-sm" aria-live="polite" hidden></p>
+        </div>
+
+        <div id="room-list" class="mt-4 space-y-4" aria-live="polite" aria-busy="true"></div>
+      </section>
+
+      <!-- Why direct -->
+      <section id="direct" class="section" aria-labelledby="direct-title">
+        <h2 id="direct-title" class="h2">จองตรงกับโรงแรม ได้มากกว่า</h2>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <div class="card flex gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#FFF6DF] text-gold-deep"><svg class="ic"><use href="#i-badge-check"/></svg></span>
+            <div><p class="font-semibold">ไม่มีค่าธรรมเนียมตัวกลาง</p><p class="text-sm text-muted">ราคาที่เห็นคือราคาที่จ่ายจริง ชำระที่โรงแรมตอนเช็กอิน</p></div></div>
+          <div class="card flex gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#E9F5EE] text-ok"><svg class="ic"><use href="#i-calendar-check"/></svg></span>
+            <div><p class="font-semibold">ยกเลิกฟรีตามนโยบาย</p><p id="direct-cancel" class="text-sm text-muted">ยกเลิกเองได้ในแชท LINE ไม่ต้องโทร</p></div></div>
+          <div class="card flex gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#E8F8EF] text-[#06C755]"><svg class="ic"><use href="#i-message-circle"/></svg></span>
+            <div><p class="font-semibold">ใบยืนยันและการดูแลทาง LINE</p><p class="text-sm text-muted">แจ้งปัญหาระหว่างเข้าพัก พนักงานได้รับแจ้งทันที</p></div></div>
+          <div class="card flex gap-3 p-4"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F6ECFA] text-[#7B4A94]"><svg class="ic"><use href="#i-gift"/></svg></span>
+            <div><p class="font-semibold">ดีลพิเศษเมื่อกลับมาพัก</p><p class="text-sm text-muted">ลูกค้าที่เคยพักจะได้รับโค้ดส่วนลดเฉพาะคนทาง LINE</p></div></div>
+        </div>
+      </section>
+
+      <!-- Facilities -->
+      <section id="facilities" class="section" aria-labelledby="fac-title">
+        <h2 id="fac-title" class="h2">สิ่งอำนวยความสะดวก</h2>
+        <p id="hotel-desc" class="mt-2 text-[15px] leading-relaxed text-muted"></p>
+        <ul id="facility-list" class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3"></ul>
+      </section>
+
+      <!-- Policies -->
+      <section id="policies" class="section" aria-labelledby="pol-title">
+        <h2 id="pol-title" class="h2">นโยบายที่พัก</h2>
+        <div id="policy-list" class="card mt-4 divide-y divide-line"></div>
+      </section>
+
+      <!-- Location -->
+      <section id="location" class="section" aria-labelledby="loc-title">
+        <h2 id="loc-title" class="h2">ที่ตั้ง</h2>
+        <div class="card mt-4 overflow-hidden">
+          <div id="map-wrap" class="relative aspect-[16/9] bg-[#EFEAE0] sm:aspect-[21/9]">
+            <div class="absolute inset-0 grid place-items-center text-sm text-muted"><span class="flex items-center gap-2"><svg class="ic"><use href="#i-map-pin"/></svg>กำลังโหลดแผนที่…</span></div>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-3 p-4">
+            <p class="flex min-w-0 items-start gap-2 text-sm"><svg class="ic mt-0.5 text-gold-deep"><use href="#i-map-pin"/></svg><span id="loc-address">—</span></p>
+            <div class="flex gap-2">
+              <a id="loc-open" class="btn-outline px-3 py-2 text-sm" target="_blank" rel="noopener"><svg class="ic"><use href="#i-external-link"/></svg>Google Maps</a>
+              <a id="loc-call" class="btn-outline px-3 py-2 text-sm" hidden><svg class="ic"><use href="#i-phone"/></svg>โทร</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Reviews -->
+      <section id="reviews" class="section" aria-labelledby="rev-title">
+        <h2 id="rev-title" class="h2">คะแนนจากผู้เข้าพัก</h2>
+        <div id="review-box" class="card mt-4 p-5"></div>
+      </section>
+    </div>
+
+    <!-- Aside (desktop) -->
+    <aside class="hidden lg:block">
+      <div class="sticky top-[calc(var(--topbar-h)+64px)] space-y-4">
+        <div class="card p-5">
+          <p class="text-xs font-semibold text-gold-deep">การเข้าพักของคุณ</p>
+          <p id="aside-dates" class="mt-2 font-semibold">—</p>
+          <p id="aside-guests" class="text-sm text-muted">—</p>
+          <p id="aside-from" class="mt-3 text-sm text-muted"></p>
+          <a href="#rooms" class="btn-gold mt-4 w-full py-2.5 text-sm">ดูห้องว่าง</a>
+        </div>
+        <div class="card p-5">
+          <p class="flex items-center gap-2 font-semibold"><svg class="ic text-[#06C755]"><use href="#i-message-circle"/></svg>มีคำถาม? คุยกับเราใน LINE</p>
+          <p class="mt-1 text-sm text-muted">ตอบกลับโดยพนักงานของโรงแรม</p>
+          <a id="aside-line" class="btn-line mt-3 w-full py-2.5 text-sm" target="_blank" rel="noopener" hidden>เพิ่มเพื่อน LINE</a>
+          <a id="aside-phone" class="btn-outline mt-2 w-full py-2.5 text-sm" hidden><svg class="ic"><use href="#i-phone"/></svg><span></span></a>
+        </div>
+      </div>
+    </aside>
   </main>
 
-  <!-- ===== Result Dialog (Modal) ===== -->
-  <dialog id="result-dialog" aria-labelledby="dlg-title">
-    <div class="glass rounded-3xl p-6 text-center text-ivory">
-      <div id="dlg-icon" class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full text-2xl"></div>
-      <h3 id="dlg-title" class="font-serif text-xl font-semibold"></h3>
-      <p id="dlg-msg" class="mt-2 text-sm leading-relaxed text-ivory/75"></p>
-
-      <div id="dlg-booking" hidden class="mt-5 rounded-2xl border border-gold/30 bg-black/25 px-4 py-3">
-        <p class="text-xs text-ivory/55">หมายเลขการจอง</p>
-        <p id="dlg-booking-id" class="mt-1 font-mono text-lg tracking-wider text-gold-soft"></p>
-        <button id="dlg-copy" type="button" class="mt-2 text-xs text-gold underline underline-offset-4">คัดลอก</button>
+  <footer class="mt-6 bg-ink text-ivory/70">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-start justify-between gap-6 px-4 py-8 text-sm sm:px-6">
+      <div>
+        <p class="font-serif text-lg text-ivory" id="footer-name">Sai Lan Hotel</p>
+        <p id="footer-address" class="mt-1 max-w-md"></p>
+        <p id="footer-phone" class="mt-1"></p>
       </div>
-
-      <button id="dlg-primary" type="button" class="btn-gold mt-6 w-full px-5 py-3"></button>
+      <div class="text-right text-xs text-ivory/50">
+        <p>จองตรงผ่านระบบของโรงแรม · ข้อมูลใช้เพื่อการจองและดูแลการเข้าพักเท่านั้น</p>
+        <p class="mt-1">© <span id="footer-year"></span> <span id="footer-name2">Sai Lan Hotel</span></p>
+      </div>
     </div>
-  </dialog>
+  </footer>
+</div>
 
-  <script type="module">
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+<!-- ===================== CHECKOUT ===================== -->
+<div id="checkout-view" hidden class="min-h-dvh pb-28 lg:pb-10">
+  <header class="sticky top-0 z-50 border-b border-white/10 bg-ink text-ivory">
+    <div class="mx-auto flex h-[var(--topbar-h)] max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+      <button id="co-back" type="button" class="btn-ghost-dark px-3 py-1.5 text-sm"><svg class="ic"><use href="#i-arrow-left"/></svg>เลือกห้องอื่น</button>
+      <ol class="hidden items-center gap-2 text-xs text-ivory/60 sm:flex" aria-label="ขั้นตอน">
+        <li class="flex items-center gap-1.5 text-gold-soft"><svg class="ic"><use href="#i-circle-check"/></svg>เลือกห้อง</li><li>›</li>
+        <li class="font-semibold text-ivory">ข้อมูลผู้เข้าพัก</li><li>›</li><li>ยืนยันการจอง</li>
+      </ol>
+      <span class="font-serif text-sm text-gold" id="co-hotel">Sai Lan Hotel</span>
+    </div>
+  </header>
 
-    /* ค่าตั้งภายใน (ปกติไม่ต้องแก้) */
-    const SETTINGS = {
-      MAX_NIGHTS: 30,
-      MAX_DAYS_AHEAD: 365,
-      REQUEST_TIMEOUT_MS: 20000,
-      SKIP_NGROK_WARNING: true, // ส่ง header ข้ามหน้าเตือนของ ngrok แพ็กเกจฟรี
-    };
+  <div class="mx-auto grid max-w-6xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+    <!-- Summary -->
+    <aside class="lg:order-2">
+      <div class="card overflow-hidden lg:sticky lg:top-[calc(var(--topbar-h)+16px)]">
+        <div id="sum-media" class="relative h-36 bg-ink"></div>
+        <div class="p-4 sm:p-5">
+          <p class="text-xs font-medium tracking-[.2em] text-gold-deep" id="sum-hotel">SAI LAN HOTEL</p>
+          <h2 id="sum-room" class="mt-1 font-serif text-xl font-semibold">—</h2>
+          <div class="mt-3 grid grid-cols-2 gap-2 rounded-2xl bg-[#FBF8F1] p-3 text-sm">
+            <div><p class="text-xs text-muted">เช็กอิน</p><p id="sum-ci" class="font-semibold">—</p><p id="sum-ci-time" class="text-xs text-muted"></p></div>
+            <div><p class="text-xs text-muted">เช็กเอาต์</p><p id="sum-co" class="font-semibold">—</p><p id="sum-co-time" class="text-xs text-muted"></p></div>
+          </div>
+          <p id="sum-stay" class="mt-2 text-sm text-muted"></p>
+          <p id="sum-cancel" class="mt-2 flex items-start gap-1.5 text-sm"></p>
 
-    const PREVIEW = new URLSearchParams(location.search).get('preview') === '1';
-    const ROOM_TYPES = ['Superior', 'Deluxe', 'Suite'];
-    const TZ = 'Asia/Bangkok';
-    const $ = (sel) => document.querySelector(sel);
-    const isConfigured = (v) => typeof v === 'string' && v.length > 0 && !v.includes('YOUR_');
+          <div class="mt-4 border-t border-line pt-3 text-sm">
+            <button id="sum-toggle" type="button" class="flex w-full items-center justify-between text-left text-muted" aria-expanded="false">
+              <span>ราคาต่อคืน</span><svg class="ic"><use href="#i-chevron-down"/></svg></button>
+            <ul id="sum-nights" hidden class="mt-2 space-y-1 text-muted"></ul>
+            <div class="mt-3 space-y-1.5">
+              <div class="flex justify-between"><span id="sum-sub-label">ค่าห้อง</span><span id="sum-sub">—</span></div>
+              <div id="sum-disc-row" hidden class="flex justify-between text-ok"><span id="sum-disc-label">ส่วนลด</span><span id="sum-disc"></span></div>
+              <div class="flex items-end justify-between border-t border-line pt-2">
+                <span class="font-semibold">ยอดชำระที่โรงแรม</span><span id="sum-total" class="text-xl font-semibold">—</span></div>
+              <p class="text-xs text-muted">รวมภาษีและค่าบริการแล้ว · ไม่ต้องชำระล่วงหน้า</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
 
-    /* ---------------- Date helpers (อิงเวลาไทยเสมอ) ---------------- */
-    const todayBKK = () =>
-      new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-    const addDays = (ymd, n) => {
-      const [y, m, d] = ymd.split('-').map(Number);
-      return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
-    };
-    const diffDays = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000);
-    const thaiDate = (ymd) => {
-      const [y, m, d] = ymd.split('-').map(Number);
-      return new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
-        .format(new Date(Date.UTC(y, m - 1, d)));
-    };
-    // "+66 81-234-5678" → "0812345678"
-    const normPhone = (v) => (v || '').replace(/[\s\-().]/g, '').replace(/^\+?66(?=\d{9}$)/, '0');
-    const newRequestId = () =>
-      (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+    <div class="space-y-4 lg:order-1">
+      <div id="co-alert" hidden role="alert" class="flex items-start gap-2 rounded-2xl border border-[#E7B4AE] bg-[#FDECEA] p-4 text-sm text-bad"></div>
+      <!-- LINE account -->
+      <section id="co-line" class="card p-4 sm:p-5" aria-live="polite"></section>
 
-    /* ---------------- UI state ---------------- */
-    const STATES = ['loading', 'outside', 'error'];
-    function showState(name, message) {
-      STATES.forEach((s) => ($('#state-' + s).hidden = s !== name));
-      $('#booking-form').hidden = true;
-      if (name === 'error') $('#state-error-msg').textContent = message || '';
+      <form id="booking-form" novalidate class="space-y-4" hidden>
+        <section class="card p-4 sm:p-5">
+          <h3 class="font-serif text-lg font-semibold">ข้อมูลผู้เข้าพัก</h3>
+          <p class="text-sm text-muted">ใช้ชื่อตามบัตรประชาชน/พาสปอร์ต เพื่อเช็กอินได้รวดเร็ว</p>
+          <div class="mt-4 space-y-3">
+            <div>
+              <label class="label" for="full_name">ชื่อ-นามสกุล</label>
+              <input class="field" id="full_name" name="full_name" type="text" autocomplete="name" maxlength="100" placeholder="เช่น สมชาย ใจดี" aria-describedby="err-full_name">
+              <p class="field-error" id="err-full_name"></p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label class="label" for="phone">เบอร์มือถือ</label>
+                <input class="field" id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="08xxxxxxxx" aria-describedby="err-phone">
+                <p class="field-error" id="err-phone"></p>
+              </div>
+              <div>
+                <label class="label" for="email">อีเมล</label>
+                <input class="field" id="email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="120" placeholder="name@email.com" aria-describedby="err-email">
+                <p class="field-error" id="err-email"></p>
+              </div>
+            </div>
+            <p class="flex items-center gap-2 rounded-xl bg-[#FBF8F1] px-3 py-2 text-sm"><svg class="ic text-gold-deep"><use href="#i-users"/></svg><span id="co-guests">—</span>
+              <button type="button" id="co-edit-guests" class="ml-auto text-xs text-gold-deep underline underline-offset-4">แก้ไข</button></p>
+          </div>
+        </section>
+
+        <section class="card p-4 sm:p-5">
+          <h3 class="font-serif text-lg font-semibold">เวลาเดินทางถึงและคำขอพิเศษ</h3>
+          <p class="text-sm text-muted">ไม่บังคับ · โรงแรมจะพยายามจัดให้ตามความพร้อมของห้อง</p>
+          <div class="mt-4 space-y-4">
+            <div>
+              <label class="label" for="arrival_time">เวลาที่คาดว่าจะถึง</label>
+              <select id="arrival_time" class="field">
+                <option value="">ยังไม่ทราบ</option>
+                <option>ก่อน 14:00</option><option>14:00-16:00</option><option>16:00-18:00</option>
+                <option>18:00-20:00</option><option>20:00-22:00</option><option>หลัง 22:00</option>
+              </select>
+            </div>
+            <div>
+              <span class="label">คำขอพิเศษ</span>
+              <div id="req-chips" class="flex flex-wrap gap-2"></div>
+              <textarea id="req-text" class="field mt-3 min-h-[5.5rem]" maxlength="300" placeholder="เช่น ขอหมอนเพิ่ม, แพ้ขนนก, มาถึงดึก"></textarea>
+              <p class="mt-1 text-right text-xs text-muted"><span id="req-count">0</span>/300</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card p-4 sm:p-5">
+          <h3 class="font-serif text-lg font-semibold">โค้ดส่วนลด</h3>
+          <div class="mt-3 flex gap-2">
+            <input id="co-promo" class="field uppercase" maxlength="30" placeholder="ใส่โค้ด (ถ้ามี)" autocomplete="off" autocapitalize="characters">
+            <button id="co-promo-btn" type="button" class="btn-outline shrink-0 px-4 text-sm">ใช้โค้ด</button>
+          </div>
+          <p id="co-promo-status" class="mt-2 text-sm" aria-live="polite" hidden></p>
+        </section>
+
+        <section class="card p-4 sm:p-5">
+          <h3 class="font-serif text-lg font-semibold">ก่อนยืนยัน</h3>
+          <ul id="co-policies" class="mt-2 space-y-1.5 text-sm text-muted"></ul>
+          <label class="mt-4 flex items-start gap-3 text-sm">
+            <input id="consent" name="consent" type="checkbox" class="mt-1 h-4 w-4 accent-[#B08D3E]" aria-describedby="err-consent">
+            <span>ยินยอมให้โรงแรมใช้ข้อมูลนี้เพื่อการจอง และติดต่อฉันผ่าน LINE ระหว่างการเข้าพัก</span>
+          </label>
+          <p class="field-error" id="err-consent"></p>
+        </section>
+
+        <button id="submit-btn" type="submit" class="btn-gold hidden w-full px-5 py-3.5 text-base lg:flex">
+          <span class="spinner" hidden></span><span class="submit-label">ยืนยันการจอง</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Mobile sticky CTA -->
+  <div id="mobile-cta" class="mobile-cta fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 px-4 pt-3 backdrop-blur lg:hidden">
+    <div class="mx-auto flex max-w-6xl items-center justify-between gap-3">
+      <div class="min-w-0"><p class="text-xs text-muted">ยอดชำระที่โรงแรม</p><p id="cta-total" class="text-lg font-semibold">—</p></div>
+      <button id="submit-btn-m" type="submit" form="booking-form" class="btn-gold px-5 py-3 text-base">
+        <span class="spinner" hidden></span><span class="submit-label">ยืนยันการจอง</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<dialog id="lightbox" aria-label="รูปภาพ">
+  <div class="relative flex h-full w-full flex-col items-center justify-center gap-3 p-4 text-ivory">
+    <button id="lb-close" type="button" class="btn-ghost-dark absolute right-4 top-4 z-10 p-2" aria-label="ปิด"><svg class="ic"><use href="#i-x"/></svg></button>
+    <div id="lb-stage" class="relative grid w-full max-w-5xl flex-1 place-items-center"></div>
+    <div class="flex w-full max-w-5xl items-center justify-between gap-3">
+      <button id="lb-prev" type="button" class="btn-ghost-dark p-2.5" aria-label="รูปก่อนหน้า"><svg class="ic"><use href="#i-chevron-left"/></svg></button>
+      <p class="text-center text-sm"><span id="lb-caption"></span> <span id="lb-count" class="text-ivory/50"></span></p>
+      <button id="lb-next" type="button" class="btn-ghost-dark p-2.5" aria-label="รูปถัดไป"><svg class="ic"><use href="#i-chevron-right"/></svg></button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Result dialog -->
+<dialog id="result-dialog" aria-labelledby="dlg-title" class="w-[min(92vw,27rem)]">
+  <div class="card p-6 text-center">
+    <div id="dlg-icon" class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full"></div>
+    <h3 id="dlg-title" class="font-serif text-xl font-semibold"></h3>
+    <p id="dlg-msg" class="mt-2 text-sm leading-relaxed text-muted"></p>
+    <div id="dlg-booking" hidden class="mt-4 rounded-2xl border border-gold/40 bg-[#FFFBF0] p-4 text-left text-sm">
+      <p class="text-xs text-muted">หมายเลขการจอง</p>
+      <div class="flex items-center justify-between gap-2"><p id="dlg-booking-id" class="font-mono text-lg font-semibold tracking-wider text-gold-deep"></p>
+        <button id="dlg-copy" type="button" class="text-xs text-gold-deep underline underline-offset-4">คัดลอก</button></div>
+      <div id="dlg-lines" class="mt-3 space-y-1 border-t border-line pt-3"></div>
+    </div>
+    <div class="mt-5 grid gap-2">
+      <button id="dlg-primary" type="button" class="btn-gold w-full px-5 py-3"></button>
+      <button id="dlg-secondary" type="button" class="btn-outline w-full px-5 py-2.5 text-sm" hidden></button>
+    </div>
+  </div>
+</dialog>
+
+<script type="module">
+  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+
+  /* ค่าตั้งภายใน (ปกติไม่ต้องแก้) */
+  const SETTINGS = { MAX_NIGHTS: 30, MAX_DAYS_AHEAD: 365, REQUEST_TIMEOUT_MS: 20000, SKIP_NGROK_WARNING: true };
+  const API = { hotel: N8N_BASE_URL.replace(/\/+$/, '') + '/hotel', booking: N8N_BASE_URL.replace(/\/+$/, '') + '/booking' };
+  const PREVIEW = new URLSearchParams(location.search).get('preview') === '1';
+  const TZ = 'Asia/Bangkok';
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const isConfigured = (v) => typeof v === 'string' && v.length > 0 && !v.includes('YOUR_');
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const safeUrl = (u) => { const s = String(u || '').trim(); return /^(https?:)?\/\//i.test(s) || (/^[\w./-]+$/.test(s) && !s.includes('..')) ? s : ''; };
+  const ic = (name, cls = '') => `<svg class="ic ${cls}"><use href="#i-${name}"/></svg>`;
+  /*ICONS: wifi waves circle-parking coffee dumbbell bell-ring snowflake tv refrigerator bath shower-head wine lamp-desk wind sparkles utensils sofa check star maximize bed-double mountain clock calendar-x baby cigarette-off credit-card message-circle camera images triangle-alert circle-alert circle-check party-popper log-in external-link refresh-cw user */
+  const baht = (n) => '฿' + Math.round(Number(n) || 0).toLocaleString('en-US');
+
+  /* ---------------- วันที่ (อิงเวลาไทย) ---------------- */
+  const todayBKK = () => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const addDays = (ymd, n) => { const [y, m, d] = ymd.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+  const diffDays = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000);
+  const isYmd = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '') && !Number.isNaN(Date.parse(s + 'T00:00:00Z'));
+  const thaiDate = (ymd, opt = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) => {
+    if (!isYmd(ymd)) return '—';
+    const [y, m, d] = ymd.split('-').map(Number);
+    return new Intl.DateTimeFormat('th-TH', { ...opt, timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, d)));
+  };
+  const shortDate = (ymd) => thaiDate(ymd, { day: 'numeric', month: 'short' });
+  const normPhone = (v) => (v || '').replace(/[\s\-().]/g, '').replace(/^\+?66(?=\d{9}$)/, '0');
+  const newRequestId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
+  /* ---------------- State ---------------- */
+  const TODAY = todayBKK();
+  const state = {
+    hotel: null, rating: null, rooms: [], search: null, promo: null,
+    q: { ci: TODAY, co: addDays(TODAY, 1), adults: 2, children: 0 },
+    promoCode: '', selected: null, view: 'home',
+    liff: 'loading', profile: null, isFriend: null, inClient: false, liffError: '',
+    loading: true, loadError: '',
+  };
+
+  /* =========================================================
+     LIFF
+     ========================================================= */
+  const liffUrl = (params) => `https://liff.line.me/${LIFF_ID}${params ? '?' + params : ''}`;
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+
+  async function initLiff() {
+    if (PREVIEW) {
+      state.liff = 'ready'; state.isFriend = true;
+      state.profile = { userId: 'U_PREVIEW', displayName: 'Preview Guest', pictureUrl: '' };
+      $('#preview-badge').hidden = false;
+      return;
     }
-    function showForm() {
-      STATES.forEach((s) => ($('#state-' + s).hidden = true));
-      $('#booking-form').hidden = false;
+    if (!isConfigured(LIFF_ID)) { state.liff = 'unconfigured'; return; }
+    if (!window.liff) { state.liff = 'error'; state.liffError = 'โหลด LINE SDK ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่'; return; }
+    try { await withTimeout(liff.init({ liffId: LIFF_ID }), 12000); }
+    catch (err) { state.liff = 'error'; state.liffError = 'เชื่อมต่อ LINE ไม่สำเร็จ (' + (err?.message || err) + ')'; return; }
+    state.inClient = liff.isInClient();
+    if (!liff.isLoggedIn()) {
+      if (state.inClient) { liff.login(); state.liff = 'redirecting'; return; }
+      state.liff = 'guest';   // เปิดบนเว็บ: ดูห้อง/ราคาได้ ล็อกอินตอนจอง
+      return;
     }
+    try { state.profile = await liff.getProfile(); state.liff = 'ready'; }
+    catch { state.liff = 'error'; state.liffError = 'อ่านข้อมูลบัญชี LINE ไม่ได้ ตรวจว่า LIFF app เปิด scope "profile" และ "openid"'; return; }
+    await checkFriendship();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && state.liff === 'ready') checkFriendship().then(renderLineBox); });
+  }
+  async function checkFriendship() {
+    if (PREVIEW) return;
+    try { const { friendFlag } = await liff.getFriendship(); state.isFriend = !!friendFlag; }
+    catch { state.isFriend = null; }   // OA ยังไม่ได้ผูกกับ LINE Login channel → ข้าม
+  }
+  function loginWithState() {
+    if (!window.liff) return;
+    const url = new URL(location.href);
+    writeUrlState(url, true);
+    liff.login({ redirectUri: url.toString() });
+  }
 
-    /* ---------------- LIFF ---------------- */
-    let profile = null;
-    let isFriend = null; // true / false / null (ตรวจไม่ได้)
-    const liffUrl = () => `https://liff.line.me/${LIFF_ID}`;
+  /* =========================================================
+     URL state: ci co ad ch promo rt step (ใช้ตอนกลับจากหน้า LINE Login และลิงก์ดีลจาก LINE)
+     ========================================================= */
+  function readUrlState() {
+    const p = new URLSearchParams(location.search);
+    const ci = p.get('ci'), co = p.get('co');
+    if (isYmd(ci) && isYmd(co) && ci >= TODAY && co > ci) Object.assign(state.q, { ci, co });
+    const ad = parseInt(p.get('ad'), 10), ch = parseInt(p.get('ch'), 10);
+    if (ad >= 1 && ad <= 10) state.q.adults = ad;
+    if (ch >= 0 && ch <= 10) state.q.children = ch;
+    const promo = (p.get('promo') || '').trim().toUpperCase().slice(0, 30);
+    if (/^[A-Z0-9-]+$/.test(promo)) state.promoCode = promo;
+    return { step: p.get('step'), rt: p.get('rt') };
+  }
+  function writeUrlState(url = new URL(location.href), checkout = state.view === 'checkout') {
+    const p = url.searchParams;
+    p.set('ci', state.q.ci); p.set('co', state.q.co); p.set('ad', state.q.adults); p.set('ch', state.q.children);
+    state.promoCode ? p.set('promo', state.promoCode) : p.delete('promo');
+    if (checkout && state.selected) { p.set('step', 'checkout'); p.set('rt', state.selected); } else { p.delete('step'); p.delete('rt'); }
+    return url;
+  }
+  const syncUrl = (push = false) => { const url = writeUrlState(); history[push ? 'pushState' : 'replaceState']({ view: state.view }, '', url); };
 
-    async function initLiff() {
-      if (PREVIEW) {
-        profile = { userId: 'U_PREVIEW', displayName: 'Preview Guest', pictureUrl: '' };
-        $('#preview-badge').hidden = false;
-        renderProfile();
-        showForm();
-        return;
+  /* =========================================================
+     API
+     ========================================================= */
+  async function request(url, opts = {}) {
+    const headers = { ...(opts.body ? { 'Content-Type': 'application/json' } : {}) };
+    if (SETTINGS.SKIP_NGROK_WARNING) headers['ngrok-skip-browser-warning'] = '1';
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), SETTINGS.REQUEST_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { method: opts.method || 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined, signal: ctrl.signal });
+      const text = await res.text();
+      let data = null; try { data = JSON.parse(text); } catch { /* ไม่ใช่ JSON */ }
+      return { ok: res.ok, status: res.status, data };
+    } finally { clearTimeout(timer); }
+  }
+
+  let loadSeq = 0;
+  async function loadHotel() {
+    const seq = ++loadSeq;
+    state.loading = true; state.loadError = '';
+    renderRooms();
+    const params = new URLSearchParams({ check_in: state.q.ci, check_out: state.q.co, adults: state.q.adults, children: state.q.children });
+    if (state.promoCode) params.set('promo', state.promoCode);
+    if (state.profile?.userId && state.profile.userId !== 'U_PREVIEW') params.set('uid', state.profile.userId);
+    let data;
+    try {
+      if (PREVIEW) data = await previewHotelApi(params);
+      else {
+        const r = await request(API.hotel + '?' + params);
+        if (!r.ok || !r.data?.success) throw new Error(r.status === 404 ? 'ไม่พบระบบข้อมูลห้องพัก (Workflow Q ยังไม่ได้ Publish หรือ URL ผิด)' : 'โหลดข้อมูลห้องว่างไม่สำเร็จ (HTTP ' + r.status + ')');
+        data = r.data;
       }
-      if (!isConfigured(LIFF_ID)) return showState('error', 'ยังไม่ได้ตั้งค่า LIFF_ID ที่ด้านบนไฟล์');
-      if (!window.liff) return showState('error', 'โหลด LINE SDK ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
-
-      try {
-        await liff.init({ liffId: LIFF_ID });
-      } catch (err) {
-        return showState('error', 'เชื่อมต่อ LINE ไม่สำเร็จ (' + (err?.message || err) + ')');
-      }
-
-      if (!liff.isLoggedIn()) {
-        if (liff.isInClient()) { liff.login(); return; }
-        // เปิดนอก LINE และยังไม่ล็อกอิน → ให้เลือกเปิดในแอป หรือ ล็อกอินบนเว็บ
-        $('#open-in-line').href = liffUrl();
-        showState('outside');
-        return;
-      }
-
-      try {
-        profile = await liff.getProfile();
-      } catch (err) {
-        return showState('error', 'อ่านข้อมูลบัญชี LINE ไม่ได้ ตรวจว่า LIFF app ติ๊ก scope "profile"');
-      }
-      renderProfile();
-      showForm();
-      await checkFriendship();
-      // กลับมาจากหน้าเพิ่มเพื่อน → ตรวจใหม่
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) checkFriendship(); });
+    } catch (err) {
+      if (seq !== loadSeq) return;
+      state.loading = false;
+      state.loadError = err?.name === 'AbortError' ? 'ระบบตอบกลับช้าเกินไป กรุณาลองใหม่' : (err?.message?.startsWith('โหลด') || err?.message?.startsWith('ไม่พบ') ? err.message : 'เชื่อมต่อระบบจองไม่ได้ ตรวจอินเทอร์เน็ต หรือระบบอาจปิดอยู่');
+      renderRooms(); renderHotel();
+      return;
     }
+    if (seq !== loadSeq) return;
+    state.loading = false;
+    const first = !state.hotel;
+    state.hotel = data.hotel; state.rating = data.rating; state.rooms = data.rooms || []; state.search = data.search; state.promo = data.promo;
+    if (first) renderHotel();
+    renderRooms(); renderPromo(); renderAside();
+    if (state.view === 'checkout') renderCheckout();
+    return data;
+  }
 
-    function renderProfile() {
-      $('#profile-name').textContent = profile.displayName || 'ผู้ใช้ LINE';
-      if (profile.pictureUrl) {
-        const img = $('#profile-pic');
-        img.src = profile.pictureUrl; img.hidden = false; $('#profile-fallback').hidden = true;
-      }
+  /* =========================================================
+     HOME rendering
+     ========================================================= */
+  const GALLERY_LABELS = ['ล็อบบี้และต้อนรับ', 'สระว่ายน้ำ', 'ห้องอาหาร', 'ห้องพัก', 'บรรยากาศรอบโรงแรม'];
+  let galleryItems = [];
+
+  function buildGallery() {
+    const h = state.hotel || {};
+    const items = (h.gallery || []).map(safeUrl).filter(Boolean).map((src) => ({ src, caption: h.name || 'Sai Lan Hotel' }));
+    for (const r of state.rooms) for (const src of (r.images || []).map(safeUrl).filter(Boolean)) items.push({ src, caption: r.name });
+    const labels = [...GALLERY_LABELS];
+    for (const r of state.rooms) if (!(r.images || []).length) labels.splice(3, 0, r.name);
+    let i = 0;
+    while (items.length < 5) items.push({ ph: true, caption: labels[i++ % labels.length] });
+    return items;
+  }
+  const phTile = (label, k, note = 'รอใส่รูปภาพ') =>
+    `<span class="ph ph-${k % 5}">${ic('camera')}<span class="ph-label">${esc(label)}</span><span class="ph-note">${esc(note)}</span></span>`;
+  const imgTag = (src, alt, k) =>
+    `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" decoding="async" data-ph="${esc(alt)}" data-k="${k}">`;
+
+  function renderGallery() {
+    galleryItems = buildGallery();
+    const total = galleryItems.length;
+    $('#gallery').innerHTML = galleryItems.slice(0, 5).map((it, k) => `
+      <button type="button" class="g-item" data-lb="${k}" aria-label="ดูรูป ${esc(it.caption)}">
+        ${it.ph ? phTile(it.caption, k) : imgTag(it.src, it.caption, k)}
+        ${k === 4 || (k === 0 && matchMedia('(max-width: 767.98px)').matches) ? `<span class="g-count btn-ghost-dark bg-black/45 px-3 py-1 text-xs backdrop-blur">${ic('images')} ${total} รูป</span>` : ''}
+      </button>`).join('');
+  }
+  // รูปเสีย → ใช้ placeholder แทน
+  document.addEventListener('error', (e) => {
+    const img = e.target;
+    if (img.tagName === 'IMG' && img.dataset.ph !== undefined && !img.dataset.failed) {
+      img.dataset.failed = '1';
+      img.insertAdjacentHTML('afterend', phTile(img.dataset.ph, Number(img.dataset.k) || 0, 'โหลดรูปไม่สำเร็จ'));
+      img.remove();
     }
+  }, true);
 
-    async function checkFriendship() {
-      try {
-        const { friendFlag } = await liff.getFriendship();
-        isFriend = !!friendFlag;
-        $('#friend-warn').hidden = isFriend;
-      } catch {
-        isFriend = null; // OA ยังไม่ได้ผูกกับ LINE Login channel → ข้าม
-      }
+  const ratingWord = (a) => (a >= 4.5 ? 'ยอดเยี่ยม' : a >= 4 ? 'ดีมาก' : a >= 3.5 ? 'ดี' : a >= 3 ? 'พอใช้' : 'ควรปรับปรุง');
+  const AMENITY_ICON = [
+    [/wi-?fi|อินเทอร์เน็ต/i, 'wifi'], [/สระ|pool/i, 'waves'], [/จอด|parking/i, 'circle-parking'], [/อาหารเช้า|breakfast/i, 'coffee'],
+    [/ฟิตเนส|gym|fitness/i, 'dumbbell'], [/รูมเซอร์วิส|room service/i, 'bell-ring'], [/แอร์|air/i, 'snowflake'], [/ทีวี|tv/i, 'tv'],
+    [/ตู้เย็น|fridge/i, 'refrigerator'], [/อ่าง|bath/i, 'bath'], [/ฝักบัว|shower/i, 'shower-head'], [/มินิบาร์|minibar/i, 'wine'],
+    [/กาแฟ|ชา|coffee|tea/i, 'coffee'], [/โต๊ะทำงาน|desk/i, 'lamp-desk'], [/ไดร์|hair/i, 'wind'], [/ร้านอาหาร|restaurant/i, 'utensils'],
+    [/โซฟา|นั่งเล่น|sofa/i, 'sofa'],
+  ];
+  const amenityIcon = (t) => (AMENITY_ICON.find(([re]) => re.test(t)) || [0, 'check'])[1];
+
+  function renderHotel() {
+    const h = state.hotel || {};
+    const name = h.name || 'Sai Lan Hotel';
+    document.title = `${name} · จองห้องพักตรงกับโรงแรม`;
+    $('#hotel-name').textContent = name;
+    $('#co-hotel').textContent = name; $('#sum-hotel').textContent = name.toUpperCase();
+    $('#footer-name').textContent = name; $('#footer-name2').textContent = name;
+    $('#footer-year').textContent = String(new Date().getFullYear());
+    $('#hotel-tagline').textContent = h.tagline || '';
+    $('#hotel-desc').textContent = h.description || '';
+    const stars = Math.max(0, Math.min(5, Math.round(h.stars || 0)));
+    $('#hotel-stars').innerHTML = stars ? Array.from({ length: stars }, () => ic('star', 'ic-fill')).join('') : '';
+    $('#hotel-stars').setAttribute('aria-label', stars ? `โรงแรม ${stars} ดาว` : '');
+    $('#hotel-address-text').textContent = h.address || (state.hotel ? 'ที่อยู่โรงแรม (ตั้งค่า hotel_address ในชีต Config)' : '—');
+    $('#footer-address').textContent = h.address || '';
+    $('#footer-phone').textContent = h.phone ? 'โทร ' + h.phone : '';
+
+    const r = state.rating;
+    $('#rating-badge').hidden = !r;
+    if (r) {
+      $('#rating-score').textContent = Number(r.average).toFixed(1);
+      $('#rating-word').textContent = ratingWord(r.average);
+      $('#rating-count').textContent = `${r.count} คะแนนจากผู้เข้าพักจริง`;
     }
+    renderGallery();
 
-    if (isConfigured(LINE_OA_BASIC_ID)) {
-      const a = $('#add-friend');
-      a.href = 'https://line.me/R/ti/p/' + encodeURIComponent(LINE_OA_BASIC_ID);
-      a.hidden = false;
+    // Facilities
+    const am = h.amenities || [];
+    $('#facility-list').innerHTML = am.length
+      ? am.map((a) => `<li class="card flex items-center gap-2.5 px-3 py-2.5 text-sm">${ic(amenityIcon(a), 'text-gold-deep')}<span>${esc(a)}</span></li>`).join('')
+      : '<li class="text-sm text-muted">ยังไม่ได้ระบุ (ตั้งค่า hotel_amenities ในชีต Config)</li>';
+
+    // Policies
+    const p = h.policies || {};
+    const days = Number(p.free_cancel_days ?? 1);
+    const pol = [
+      ['clock', 'เช็กอิน / เช็กเอาต์', `เช็กอินตั้งแต่ ${esc(h.checkin_time || '14:00')} น. · เช็กเอาต์ก่อน ${esc(h.checkout_time || '12:00')} น.${h.breakfast_time ? ` · อาหารเช้า ${esc(h.breakfast_time)}` : ''}`],
+      ['calendar-x', 'การยกเลิก', `ยกเลิกฟรีได้ถึง ${days} วันก่อนวันเข้าพัก (ยกเลิกเองได้ในเมนู "การจองของฉัน" ใน LINE)`],
+      ['baby', 'เด็กและเตียงเสริม', esc(p.child || 'สอบถามโรงแรม')],
+      ['cigarette-off', 'สัตว์เลี้ยงและการสูบบุหรี่', esc(p.pet || 'สอบถามโรงแรม')],
+      ['credit-card', 'การชำระเงิน', esc(p.payment || 'ชำระเงินที่โรงแรมเมื่อเช็กอิน')],
+      ['message-circle', 'บัญชี LINE', 'ใช้บัญชี LINE ในการจอง เพื่อรับใบยืนยันและการดูแลระหว่างเข้าพัก'],
+    ];
+    $('#policy-list').innerHTML = pol.map(([i, t, d]) => `
+      <div class="flex gap-3 p-4">${ic(i, 'mt-0.5 text-gold-deep')}<div><p class="font-medium">${t}</p><p class="text-sm text-muted">${d}</p></div></div>`).join('');
+    $('#direct-cancel').textContent = `ยกเลิกฟรีถึง ${days} วันก่อนเข้าพัก ยกเลิกเองได้ในแชท LINE`;
+
+    // Location
+    const q = h.address || name;
+    const mapLink = safeUrl(h.map_url) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+    $('#loc-address').textContent = h.address || '—';
+    $('#loc-open').href = mapLink;
+    if (h.phone) { const tel = 'tel:' + String(h.phone).replace(/[^\d+]/g, ''); $('#loc-call').href = tel; $('#loc-call').hidden = false;
+      const ap = $('#aside-phone'); ap.href = tel; ap.hidden = false; ap.querySelector('span').textContent = 'โทร ' + h.phone; }
+    lazyMap(`https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed&hl=th`);
+
+    // Reviews
+    renderReviews();
+  }
+
+  function lazyMap(src) {
+    const wrap = $('#map-wrap');
+    if (wrap.dataset.src === src) return;
+    wrap.dataset.src = src;
+    const load = () => { wrap.innerHTML = `<iframe title="แผนที่โรงแรม" src="${esc(src)}" class="absolute inset-0 h-full w-full border-0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`; };
+    if (!('IntersectionObserver' in window)) return load();
+    const io = new IntersectionObserver((ents) => { if (ents.some((e) => e.isIntersecting)) { io.disconnect(); load(); } }, { rootMargin: '300px' });
+    io.observe(wrap);
+  }
+
+  function renderReviews() {
+    const r = state.rating;
+    if (!r) {
+      $('#review-box').innerHTML = `<p class="font-medium">ยังไม่มีคะแนนรีวิว</p>
+        <p class="mt-1 text-sm text-muted">คะแนนมาจากผู้เข้าพักจริงที่ให้คะแนนผ่าน LINE หลังคืนแรกของการเข้าพัก</p>`;
+      return;
     }
-    $('#login-web').addEventListener('click', () => window.liff && liff.login());
-    $('#copy-liff').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(liffUrl()); $('#copy-liff').textContent = 'คัดลอกแล้ว ✓'; }
-      catch { prompt('คัดลอกลิงก์นี้:', liffUrl()); }
-    });
+    const dist = r.distribution || {};
+    const max = Math.max(1, ...Object.values(dist).map(Number));
+    $('#review-box').innerHTML = `
+      <div class="grid gap-5 sm:grid-cols-[auto_1fr] sm:items-center">
+        <div class="flex items-center gap-4">
+          <span class="score !h-16 !min-w-16 !text-2xl">${Number(r.average).toFixed(1)}</span>
+          <div><p class="text-lg font-semibold">${ratingWord(r.average)}</p><p class="text-sm text-muted">${r.count} คะแนนจากผู้เข้าพักจริง</p></div>
+        </div>
+        <div class="space-y-1.5">${[5, 4, 3, 2, 1].map((n) => `
+          <div class="flex items-center gap-2 text-sm"><span class="w-10 text-muted">${n} ${ic('star', 'ic-fill text-gold inline')}</span>
+          <span class="rate-bar flex-1"><i style="width:${Math.round((Number(dist[n] || 0) / max) * 100)}%"></i></span><span class="w-6 text-right text-muted">${Number(dist[n] || 0)}</span></div>`).join('')}
+        </div>
+      </div>
+      <p class="mt-4 text-xs text-muted">คะแนนเก็บจากผู้เข้าพักที่จองตรงและให้คะแนนผ่าน LINE หลังคืนแรก (1–5) ไม่มีการคัดเลือกหรือแก้ไข</p>`;
+  }
 
-    /* ---------------- Form & validation ---------------- */
-    const form = $('#booking-form');
-    const today = todayBKK();
-    const maxDate = addDays(today, SETTINGS.MAX_DAYS_AHEAD);
-    const ci = $('#check_in'), co = $('#check_out');
-    ci.min = today; ci.max = maxDate;
-    co.min = addDays(today, 1); co.max = addDays(maxDate, SETTINGS.MAX_NIGHTS);
+  function renderPromo() {
+    const box = $('#promo-status'), p = state.promo;
+    $('#promo-input').value = state.promoCode || '';
+    if (!p) { box.hidden = true; return; }
+    box.hidden = false;
+    box.className = 'mt-2 text-sm ' + (p.valid ? 'text-ok' : 'text-bad');
+    box.innerHTML = p.valid
+      ? `${ic('circle-check', 'inline -mt-0.5')} ใช้โค้ด <b>${esc(p.code)}</b> แล้ว · ${esc(p.label || `ลด ${p.percent}%`)} <button type="button" id="promo-clear" class="ml-1 text-xs text-muted underline">ยกเลิกโค้ด</button>`
+      : `${ic('circle-alert', 'inline -mt-0.5')} โค้ด ${esc(p.code)}: ${esc(p.message || 'ใช้ไม่ได้')}`;
+    $('#promo-clear')?.addEventListener('click', () => applyPromo(''));
+  }
 
-    const rules = {
-      full_name: () => {
-        const v = form.full_name.value.trim();
-        return (v.length >= 2 && v.length <= 100) || 'กรุณากรอกชื่อ-นามสกุล';
-      },
-      phone: () => /^0[689]\d{8}$/.test(normPhone(form.phone.value)) || 'เบอร์มือถือไทย 10 หลัก ขึ้นต้นด้วย 06, 08 หรือ 09',
-      email: () => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.value.trim()) || 'รูปแบบอีเมลไม่ถูกต้อง',
-      check_in: () => {
-        const v = ci.value;
-        if (!v) return 'เลือกวันเช็กอิน';
-        if (v < todayBKK()) return 'เลือกวันที่ผ่านไปแล้วไม่ได้';
-        if (v > maxDate) return 'จองล่วงหน้าได้ไม่เกิน ' + SETTINGS.MAX_DAYS_AHEAD + ' วัน';
-        return true;
-      },
-      check_out: () => {
-        const v = co.value;
-        if (!v) return 'เลือกวันเช็กเอาต์';
-        if (ci.value && v <= ci.value) return 'ต้องหลังวันเช็กอิน';
-        if (ci.value && diffDays(ci.value, v) > SETTINGS.MAX_NIGHTS) return 'เข้าพักได้ไม่เกิน ' + SETTINGS.MAX_NIGHTS + ' คืน';
-        return true;
-      },
-      room_type: () => ROOM_TYPES.includes(form.room_type.value) || 'เลือกประเภทห้อง',
-      consent: () => form.consent.checked || 'กรุณายืนยันการยินยอม',
-    };
+  function roomMedia(r, k) {
+    const imgs = (r.images || []).map(safeUrl).filter(Boolean);
+    const slides = imgs.length
+      ? imgs.map((src, i) => `<button type="button" class="rm-slide" data-room-lb="${esc(r.room_type)}" data-i="${i}" aria-label="ดูรูป ${esc(r.name)}">${imgTag(src, r.name, k)}</button>`).join('')
+      : `<div class="rm-slide">${phTile(r.name, k + 3, 'รอใส่รูปห้องพัก')}</div>`;
+    return `<div class="room-media"><div class="rm-track">${slides}</div>
+      ${imgs.length > 1 ? `<div class="rm-dots">${imgs.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>` : ''}</div>`;
+  }
 
-    function setFieldError(name, msg) {
-      const el = name === 'room_type' ? $('#room-group') : form.elements[name];
-      const err = $('#err-' + name);
-      if (msg) { el.setAttribute('aria-invalid', 'true'); err.textContent = msg; }
-      else { el.removeAttribute('aria-invalid'); err.textContent = ''; }
+  function renderRooms() {
+    const list = $('#room-list');
+    list.setAttribute('aria-busy', state.loading ? 'true' : 'false');
+    list.classList.toggle('opacity-60', state.loading && state.rooms.length > 0);
+    const nights = state.search?.nights || diffDays(state.q.ci, state.q.co);
+    $('#rooms-sub').textContent = state.search?.valid
+      ? `${nights} คืน · ${shortDate(state.q.ci)} – ${shortDate(state.q.co)} · ${guestsText()} · ราคารวมภาษีแล้ว ชำระที่โรงแรม`
+      : 'ราคารวมภาษีและค่าบริการแล้ว · ชำระที่โรงแรม';
+    if (state.loading && !state.rooms.length) {
+      list.innerHTML = [0, 1, 2].map(() => `<div class="card overflow-hidden md:grid md:grid-cols-[240px_1fr]"><div class="skeleton h-48 !rounded-none"></div>
+        <div class="space-y-3 p-5"><div class="skeleton h-6 w-1/2"></div><div class="skeleton h-4 w-3/4"></div><div class="skeleton h-4 w-2/3"></div><div class="skeleton ml-auto h-10 w-40"></div></div></div>`).join('');
+      return;
     }
-    function validate(name) {
-      const r = rules[name]();
-      setFieldError(name, r === true ? '' : r);
-      return r === true;
+    if (state.loadError) {
+      list.innerHTML = `<div class="card flex flex-col items-center gap-3 p-8 text-center">${ic('triangle-alert', 'text-bad !h-8 !w-8')}
+        <p class="font-medium">${esc(state.loadError)}</p><button type="button" id="retry-load" class="btn-outline px-4 py-2 text-sm">${ic('refresh-cw')}ลองใหม่</button></div>`;
+      $('#retry-load').addEventListener('click', loadHotel);
+      return;
     }
-    function validateAll() {
-      let firstBad = null;
-      for (const name of Object.keys(rules)) {
-        if (!validate(name) && !firstBad) firstBad = name;
-      }
-      if (firstBad) {
-        const el = firstBad === 'room_type' ? form.querySelector('input[name="room_type"]') : form.elements[firstBad];
-        el.focus();
-      }
-      return !firstBad;
-    }
-
-    ['full_name', 'phone', 'email'].forEach((n) => {
-      form.elements[n].addEventListener('blur', () => form.elements[n].value && validate(n));
-      form.elements[n].addEventListener('input', () => setFieldError(n, ''));
-    });
-    form.consent.addEventListener('change', () => validate('consent'));
-    form.querySelectorAll('input[name="room_type"]').forEach((r) => r.addEventListener('change', () => validate('room_type')));
-
-    ci.addEventListener('change', () => {
-      if (ci.value) {
-        co.min = addDays(ci.value, 1);
-        co.max = addDays(ci.value, SETTINGS.MAX_NIGHTS);
-        if (!co.value || co.value <= ci.value) co.value = addDays(ci.value, 1);
-      }
-      validate('check_in'); if (co.value) validate('check_out');
-      updateSummary();
-    });
-    co.addEventListener('change', () => { validate('check_out'); updateSummary(); });
-
-    function updateSummary() {
-      const box = $('#stay-summary');
-      if (ci.value && co.value && co.value > ci.value) {
-        const n = diffDays(ci.value, co.value);
-        box.textContent = `${n} คืน · ${thaiDate(ci.value)} → ${thaiDate(co.value)}`;
-        box.hidden = false;
-      } else box.hidden = true;
-    }
-
-    /* ---------------- Submit ---------------- */
-    // client_request_id: ใช้ค่าเดิมเมื่อกดส่งซ้ำ (เช่นหลัง timeout) เพื่อให้ n8n กันการจองซ้ำได้
-    let pendingRequestId = null;
-    form.addEventListener('input', () => { pendingRequestId = null; });
-    form.addEventListener('change', () => { pendingRequestId = null; });
-
-    let submitting = false;
-    function setLoading(on) {
-      submitting = on;
-      $('#submit-btn').disabled = on;
-      $('#submit-spinner').hidden = !on;
-      $('#submit-label').textContent = on ? 'กำลังส่งการจอง…' : 'ยืนยันการจอง';
-      form.querySelectorAll('input').forEach((i) => (i.disabled = on));
-    }
-
-    function httpMessage(status) {
-      if (status === 404) return 'ไม่พบระบบรับจอง (Workflow ยังไม่ได้ Publish หรือ URL ผิด)';
-      if (status === 400 || status === 422) return 'ข้อมูลการจองไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
-      if (status === 401 || status === 403) return 'ยืนยันตัวตน LINE ไม่สำเร็จ กรุณาปิดแล้วเปิดหน้านี้ใหม่';
-      if (status >= 500) return 'ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้ง';
-      return 'ส่งการจองไม่สำเร็จ (HTTP ' + status + ')';
-    }
-
-    function onSuccess(data) {
-      pendingRequestId = null;
-      openDialog('success', data);
-      form.reset();
-      co.min = addDays(today, 1); co.max = addDays(maxDate, SETTINGS.MAX_NIGHTS);
-      updateSummary();
-    }
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (submitting) return;
-      if (!validateAll()) return;
-
-      let idToken = null;
-      if (!PREVIEW) {
-        const decoded = liff.getDecodedIDToken?.();
-        if (decoded?.exp && decoded.exp * 1000 < Date.now() + 30000) {
-          if (liff.isInClient()) {
-            return openDialog('error', { message: 'เซสชัน LINE หมดอายุ กรุณาปิดแล้วเปิดหน้านี้ใหม่' });
-          }
-          return openDialog('error', {
-            message: 'เซสชัน LINE หมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง',
-            actionLabel: 'เข้าสู่ระบบใหม่',
-            action: () => { liff.logout(); liff.login(); },
-          });
-        }
-        idToken = liff.getIDToken();
-      }
-
-      pendingRequestId = pendingRequestId || newRequestId();
-      const payload = {
-        full_name: form.full_name.value.trim(),
-        phone: normPhone(form.phone.value),
-        email: form.email.value.trim().toLowerCase(),
-        check_in: ci.value,
-        check_out: co.value,
-        room_type: form.room_type.value,
-        line_user_id: profile.userId,
-        line_display_name: profile.displayName || '',
-        line_friend: isFriend,
-        id_token: idToken,
-        pdpa_consent: true,
-        client_request_id: pendingRequestId,
-        source: PREVIEW ? 'preview' : (liff.isInClient() ? 'liff' : 'web'),
-      };
-
-      setLoading(true);
-      try {
-        if (PREVIEW) {
-          await new Promise((r) => setTimeout(r, 900));
-          console.log('[preview] payload', payload);
-          return onSuccess({ booking_id: 'BK-PREVIEW-0000', line_sent: true });
-        }
-
-        const headers = { 'Content-Type': 'application/json' };
-        if (SETTINGS.SKIP_NGROK_WARNING) headers['ngrok-skip-browser-warning'] = '1';
-
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), SETTINGS.REQUEST_TIMEOUT_MS);
-        let res;
-        try {
-          res = await fetch(N8N_WEBHOOK_URL, { method: 'POST', headers, body: JSON.stringify(payload), signal: ctrl.signal });
-        } finally { clearTimeout(timer); }
-
-        const text = await res.text();
-        let data = null;
-        try { data = JSON.parse(text); } catch { /* ไม่ใช่ JSON */ }
-
-        if (res.ok && data?.success === true) {
-          onSuccess(data);
-        } else if (res.ok && !data) {
-          console.error('[booking] non-JSON response', text.slice(0, 300));
-          openDialog('error', { message: 'ระบบตอบกลับผิดรูปแบบ (ตรวจว่า Workflow ตอบด้วย Respond to Webhook แบบ JSON)' });
-        } else {
-          // ใช้ข้อความจาก Workflow เฉพาะเมื่อเป็น error ที่เราตอบเอง ({ success:false, message })
-          const own = data && data.success === false && data.message;
-          openDialog('error', { message: own || httpMessage(res.status) });
-        }
-      } catch (err) {
-        console.error('[booking] fetch failed', err);
-        const message = err?.name === 'AbortError'
-          ? 'ระบบตอบกลับช้าเกินไป กรุณาตรวจใน LINE ก่อนว่าได้รับใบยืนยันหรือยัง แล้วค่อยลองใหม่'
-          : 'เชื่อมต่อระบบจองไม่ได้ ตรวจอินเทอร์เน็ต หรือระบบอาจปิดอยู่';
-        openDialog('error', { message });
-      } finally {
-        setLoading(false);
-      }
-    });
-
-    /* ---------------- Dialog ---------------- */
-    const dlg = $('#result-dialog');
-    let dlgAction = () => dlg.close();
-
-    function openDialog(kind, data = {}) {
-      const ok = kind === 'success';
-      const icon = $('#dlg-icon');
-      icon.textContent = ok ? '✓' : '!';
-      icon.className = 'mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full text-2xl ' +
-        (ok ? 'bg-gold/20 text-gold-soft' : 'bg-[#F28B82]/20 text-[#F6A59E]');
-
-      if (ok) {
-        const lineSent = data.line_sent !== false;
-        const inClient = !PREVIEW && window.liff?.isInClient?.();
-        $('#dlg-title').textContent = 'จองสำเร็จ';
-        $('#dlg-msg').textContent = lineSent
-          ? 'ส่งใบยืนยันเข้า LINE แล้ว'
-          : 'บันทึกการจองเรียบร้อย แต่ส่งใบยืนยันทาง LINE ไม่สำเร็จ กรุณาเพิ่มโรงแรมเป็นเพื่อน หรือแจ้งหมายเลขนี้ที่เคาน์เตอร์';
-        $('#dlg-booking-id').textContent = data.booking_id || '—';
-        $('#dlg-copy').textContent = 'คัดลอก';
-        $('#dlg-booking').hidden = false;
-        $('#dlg-primary').textContent = inClient ? 'กลับไปที่แชท' : 'ปิด';
-        dlgAction = () => { dlg.close(); if (inClient) liff.closeWindow(); };
+    if (!state.rooms.length) { list.innerHTML = '<div class="card p-8 text-center text-muted">ยังไม่มีประเภทห้องที่เปิดขาย (ตั้งค่าในชีต RoomTypes)</div>'; return; }
+    const s = state.search || {};
+    list.innerHTML = state.rooms.map((r, k) => {
+      const searched = s.valid && r.available !== null;
+      const soldOut = searched && r.available <= 0;
+      const tooSmall = !r.fits;
+      const facts = [r.size_sqm && `${ic('maximize')} ${r.size_sqm} ตร.ม.`, r.bed && `${ic('bed-double')} ${esc(r.bed)}`,
+        r.view && `${ic('mountain')} ${esc(r.view)}`, `${ic('users')} พักได้ ${r.max_guests} ท่าน`].filter(Boolean);
+      const am = r.amenities || [];
+      const canFree = searched && r.free_cancel_until && r.free_cancel_until >= TODAY;
+      const perks = searched ? [
+        canFree ? `<li class="flex items-center gap-1.5 text-ok">${ic('check')} ยกเลิกฟรีถึง ${shortDate(r.free_cancel_until)}</li>`
+                : `<li class="flex items-center gap-1.5 text-muted">${ic('calendar-x')} ใกล้วันเข้าพัก ยกเลิกฟรีไม่ได้</li>`,
+        `<li class="flex items-center gap-1.5 text-ok">${ic('check')} ไม่ต้องชำระล่วงหน้า · ชำระที่โรงแรม</li>`] : [];
+      let status = '', price = '', btn = '';
+      if (!searched) {
+        price = `<p class="text-xs text-muted">เริ่มต้น</p><p class="text-2xl font-semibold">${baht(r.price)}</p><p class="text-xs text-muted">ต่อคืน${r.weekend_price ? ` · ศ.–ส. ${baht(r.weekend_price)}` : ''}</p>`;
+        btn = `<a href="#search" class="btn-outline mt-3 w-full px-4 py-2.5 text-sm">เลือกวันที่เพื่อดูห้องว่าง</a>`;
       } else {
-        $('#dlg-title').textContent = 'จองไม่สำเร็จ';
-        $('#dlg-msg').textContent = data.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่';
-        $('#dlg-booking').hidden = true;
-        $('#dlg-primary').textContent = data.actionLabel || 'ลองอีกครั้ง';
-        dlgAction = data.action || (() => dlg.close());
+        if (tooSmall) status = `<span class="pill bg-[#FDECEA] text-bad">พักได้สูงสุด ${r.max_guests} ท่าน</span>`;
+        else if (soldOut) status = `<span class="pill bg-[#F1EEE7] text-muted">เต็มในวันที่เลือก</span>`;
+        else if (r.available <= 2) status = `<span class="pill bg-[#FDECEA] text-bad">เหลือเพียง ${r.available} ห้อง!</span>`;
+        else status = `<span class="pill bg-[#E9F5EE] text-ok">มีห้องว่าง</span>`;
+        const avgAfter = Math.round(r.total / Math.max(1, s.nights));
+        price = `${r.discount ? `<p class="price-old text-sm">${baht(r.avg_per_night)}</p>` : ''}
+          <p class="text-2xl font-semibold ${r.discount ? 'text-bad' : ''}">${baht(avgAfter)}</p><p class="text-xs text-muted">ต่อคืน (เฉลี่ย)</p>
+          <p class="mt-1 text-sm">รวม ${s.nights} คืน <b>${baht(r.total)}</b></p>${r.discount ? `<p class="text-xs text-ok">ประหยัด ${baht(r.discount)}</p>` : ''}`;
+        const disabled = soldOut || tooSmall;
+        btn = `<button type="button" class="btn-gold mt-3 w-full px-4 py-2.5 text-sm" data-select="${esc(r.room_type)}" ${disabled ? 'disabled' : ''}>${soldOut ? 'ห้องเต็ม' : tooSmall ? 'จำนวนผู้เข้าพักเกิน' : 'เลือกห้องนี้'}</button>`;
       }
-      if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
-      $('#dlg-primary').focus();
+      return `<article class="room card overflow-hidden md:grid md:grid-cols-[240px_1fr] ${soldOut || (searched && tooSmall) ? 'soldout' : ''}" data-room="${esc(r.room_type)}">
+        ${roomMedia(r, k)}
+        <div class="grid gap-4 p-4 sm:p-5 md:grid-cols-[minmax(0,1fr)_170px]">
+          <div class="min-w-0">
+            <h3 class="font-serif text-xl font-semibold">${esc(r.name)}</h3>
+            <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">${facts.map((f) => `<li class="flex items-center gap-1.5">${f}</li>`).join('')}</ul>
+            ${r.description ? `<p class="mt-2 text-sm text-muted">${esc(r.description)}</p>` : ''}
+            ${am.length ? `<div class="mt-3 flex flex-wrap gap-1.5">${am.slice(0, 6).map((a) => `<span class="chip">${ic(amenityIcon(a), 'text-gold-deep')}${esc(a)}</span>`).join('')}${am.length > 6 ? `<span class="chip">+${am.length - 6}</span>` : ''}</div>` : ''}
+            ${perks.length ? `<ul class="mt-3 space-y-1 text-sm">${perks.join('')}</ul>` : ''}
+          </div>
+          <div class="flex flex-col items-end justify-end border-line text-right md:border-l md:pl-4">
+            <div class="mb-2">${status}</div>${price}${btn}
+          </div>
+        </div>
+      </article>`;
+    }).join('');
+    // carousel dots
+    $$('.rm-track', list).forEach((tr) => tr.addEventListener('scroll', () => {
+      const i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth));
+      $$('.rm-dots i', tr.parentElement).forEach((d, j) => d.classList.toggle('on', j === i));
+    }, { passive: true }));
+  }
+
+  function guestsText(q = state.q) { return `${q.adults} ผู้ใหญ่${q.children ? ` · ${q.children} เด็ก` : ''}`; }
+  function renderAside() {
+    const n = diffDays(state.q.ci, state.q.co);
+    const txt = `${shortDate(state.q.ci)} – ${shortDate(state.q.co)} · ${n} คืน`;
+    $('#aside-dates').textContent = txt; $('#aside-guests').textContent = guestsText();
+    $('#topbar-summary').textContent = `${txt} · ${guestsText()}`;
+    const avail = state.rooms.filter((r) => r.fits && (r.available === null || r.available > 0));
+    const min = avail.length ? Math.min(...avail.map((r) => (state.search?.valid ? Math.round(r.total / Math.max(1, state.search.nights)) : r.price))) : 0;
+    $('#aside-from').textContent = min ? `ราคาเริ่มต้น ${baht(min)} / คืน` : (state.search?.valid ? 'ไม่มีห้องว่างตรงเงื่อนไข ลองเปลี่ยนวันที่' : '');
+  }
+
+  function renderTopbarUser() {
+    const box = $('#topbar-user');
+    if (state.profile) {
+      box.innerHTML = `${state.profile.pictureUrl ? `<img src="${esc(safeUrl(state.profile.pictureUrl))}" alt="" class="h-7 w-7 rounded-full object-cover">` : `<span class="grid h-7 w-7 place-items-center rounded-full bg-gold/20 text-gold">${ic('user')}</span>`}
+        <span class="hidden max-w-[9rem] truncate sm:inline">${esc(state.profile.displayName || 'ผู้ใช้ LINE')}</span>`;
+    } else if (state.liff === 'guest') {
+      box.innerHTML = `<button type="button" id="topbar-login" class="btn-ghost-dark px-3 py-1.5 text-xs">${ic('log-in')}เข้าสู่ระบบ LINE</button>`;
+      $('#topbar-login').addEventListener('click', loginWithState);
+    } else box.innerHTML = '';
+  }
+
+  /* =========================================================
+     Search form + guests popover
+     ========================================================= */
+  const ci = $('#ci'), co = $('#co');
+  const maxDate = addDays(TODAY, SETTINGS.MAX_DAYS_AHEAD);
+  function syncSearchForm() {
+    ci.min = TODAY; ci.max = maxDate; ci.value = state.q.ci;
+    co.min = addDays(state.q.ci, 1); co.max = addDays(state.q.ci, SETTINGS.MAX_NIGHTS); co.value = state.q.co;
+    syncGuests();
+  }
+  function syncGuests() {   // อัปเดตเฉพาะจำนวนผู้เข้าพัก (ไม่ทับวันที่ที่ผู้ใช้กำลังแก้)
+    $('#adults-out').value = $('#adults-out').textContent = state.q.adults;
+    $('#children-out').value = $('#children-out').textContent = state.q.children;
+    $('#guests-text').textContent = guestsText();
+    $('[data-step="adults:-1"]').disabled = state.q.adults <= 1; $('[data-step="adults:1"]').disabled = state.q.adults >= 10;
+    $('[data-step="children:-1"]').disabled = state.q.children <= 0; $('[data-step="children:1"]').disabled = state.q.children >= 10;
+    noteSearch();
+  }
+  function searchError() {
+    const a = ci.value, b = co.value;
+    if (!isYmd(a)) return 'เลือกวันเช็กอิน';
+    if (a < TODAY) return 'เลือกวันเช็กอินที่ผ่านไปแล้วไม่ได้';
+    if (a > maxDate) return `จองล่วงหน้าได้ไม่เกิน ${SETTINGS.MAX_DAYS_AHEAD} วัน`;
+    if (!isYmd(b)) return 'เลือกวันเช็กเอาต์';
+    if (b <= a) return 'วันเช็กเอาต์ต้องหลังวันเช็กอิน';
+    if (diffDays(a, b) > SETTINGS.MAX_NIGHTS) return `เข้าพักได้ไม่เกิน ${SETTINGS.MAX_NIGHTS} คืน`;
+    return '';
+  }
+  function noteSearch() {
+    const err = searchError(), note = $('#search-note');
+    ci.setAttribute('aria-invalid', String(!!err && /เช็กอิน|ล่วงหน้า/.test(err)));
+    co.setAttribute('aria-invalid', String(!!err && /เช็กเอาต์|คืน/.test(err)));
+    note.className = 'text-sm md:col-span-4 ' + (err ? 'text-bad' : 'text-muted');
+    note.textContent = err || `${diffDays(ci.value, co.value)} คืน · ${thaiDate(ci.value)} → ${thaiDate(co.value)}`;
+  }
+  ci.addEventListener('change', () => {
+    if (isYmd(ci.value)) {
+      co.min = addDays(ci.value, 1); co.max = addDays(ci.value, SETTINGS.MAX_NIGHTS);
+      if (!isYmd(co.value) || co.value <= ci.value) co.value = addDays(ci.value, 1);
     }
-    $('#dlg-primary').addEventListener('click', () => dlgAction());
-    $('#dlg-copy').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText($('#dlg-booking-id').textContent); $('#dlg-copy').textContent = 'คัดลอกแล้ว ✓'; } catch {}
+    noteSearch();
+  });
+  co.addEventListener('change', noteSearch);
+  $('#search-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    closeGuests();
+    if (searchError()) { noteSearch(); return; }
+    Object.assign(state.q, { ci: ci.value, co: co.value });
+    syncUrl(); renderAside(); loadHotel();
+    $('#rooms').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  });
+  const pop = $('#guests-pop'), gbtn = $('#guests-btn');
+  const openGuests = () => {
+    pop.hidden = false; gbtn.setAttribute('aria-expanded', 'true'); $('#search').classList.add('raised');
+    if (!matchMedia('(max-width: 767.98px)').matches) pop.scrollIntoView({ block: 'nearest' });
+  };
+  function closeGuests() { if (!pop.hidden) { pop.hidden = true; gbtn.setAttribute('aria-expanded', 'false'); $('#search').classList.remove('raised'); } }
+  gbtn.addEventListener('click', () => (pop.hidden ? openGuests() : closeGuests()));
+  $('#guests-done').addEventListener('click', () => { closeGuests(); gbtn.focus(); });
+  document.addEventListener('click', (e) => { if (!pop.hidden && !pop.contains(e.target) && !gbtn.contains(e.target)) closeGuests(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGuests(); });
+  pop.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-step]'); if (!b) return;
+    const [k, d] = b.dataset.step.split(':');
+    state.q[k] = Math.max(k === 'adults' ? 1 : 0, Math.min(10, state.q[k] + Number(d)));
+    syncGuests();
+  });
+  $('#topbar-search').addEventListener('click', () => { $('#search').scrollIntoView({ block: 'center' }); ci.focus({ preventScroll: true }); });
+
+  /* ---------------- Promo ---------------- */
+  async function applyPromo(code) {
+    state.promoCode = String(code || '').trim().toUpperCase().replace(/\s+/g, '').slice(0, 30);
+    if (!state.promoCode) state.promo = null;
+    syncUrl();
+    await loadHotel();
+    renderPromo();
+  }
+  $('#promo-form').addEventListener('submit', (e) => { e.preventDefault(); applyPromo($('#promo-input').value); });
+
+  /* ---------------- Tabs highlight ---------------- */
+  const tabLinks = $$('#tabs .tab');
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((ents) => {
+      for (const en of ents) if (en.isIntersecting) tabLinks.forEach((a) => a.classList.toggle('active', a.getAttribute('href') === '#' + en.target.id));
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    ['rooms', 'facilities', 'policies', 'location', 'reviews'].forEach((id) => io.observe(document.getElementById(id)));
+  }
+
+  /* ---------------- Room list clicks ---------------- */
+  $('#room-list').addEventListener('click', (e) => {
+    const sel = e.target.closest('[data-select]');
+    if (sel && !sel.disabled) return openCheckout(sel.dataset.select);
+    const lb = e.target.closest('[data-room-lb]');
+    if (lb) {
+      const r = state.rooms.find((x) => x.room_type === lb.dataset.roomLb);
+      openLightbox((r.images || []).map(safeUrl).filter(Boolean).map((src) => ({ src, caption: r.name })), Number(lb.dataset.i) || 0);
+    }
+  });
+  $('#gallery').addEventListener('click', (e) => { const b = e.target.closest('[data-lb]'); if (b) openLightbox(galleryItems, Number(b.dataset.lb)); });
+
+  /* =========================================================
+     Lightbox
+     ========================================================= */
+  const lb = $('#lightbox');
+  let lbItems = [], lbIdx = 0;
+  function openLightbox(items, i = 0) {
+    if (!items.length) return;
+    lbItems = items; lbIdx = i; drawLightbox();
+    if (typeof lb.showModal === 'function') lb.showModal(); else lb.setAttribute('open', '');
+  }
+  function drawLightbox() {
+    const it = lbItems[lbIdx];
+    $('#lb-stage').innerHTML = it.ph
+      ? `<div class="relative aspect-[4/3] w-full max-w-3xl overflow-hidden rounded-2xl">${phTile(it.caption, lbIdx, 'ใส่ URL รูปในชีต Config (hotel_gallery_urls) หรือ RoomTypes (image_urls)')}</div>`
+      : `<img src="${esc(it.src)}" alt="${esc(it.caption)}" class="rounded-xl" data-ph="${esc(it.caption)}" data-k="${lbIdx}">`;
+    $('#lb-caption').textContent = it.caption || '';
+    $('#lb-count').textContent = `${lbIdx + 1} / ${lbItems.length}`;
+    $('#lb-prev').disabled = $('#lb-next').disabled = lbItems.length < 2;
+  }
+  const lbMove = (d) => { lbIdx = (lbIdx + d + lbItems.length) % lbItems.length; drawLightbox(); };
+  $('#lb-prev').addEventListener('click', () => lbMove(-1));
+  $('#lb-next').addEventListener('click', () => lbMove(1));
+  $('#lb-close').addEventListener('click', () => lb.close());
+  lb.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') lbMove(-1); if (e.key === 'ArrowRight') lbMove(1); });
+  lb.addEventListener('click', (e) => { if (e.target === lb || e.target === lb.firstElementChild) lb.close(); });
+  let touchX = null;
+  lb.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+  lb.addEventListener('touchend', (e) => { if (touchX === null) return; const dx = e.changedTouches[0].clientX - touchX; if (Math.abs(dx) > 50) lbMove(dx < 0 ? 1 : -1); touchX = null; });
+
+  /* =========================================================
+     CHECKOUT
+     ========================================================= */
+  const REQUEST_CHIPS = ['ห้องเงียบ', 'ชั้นสูง', 'เตียงเสริม', 'เช็กอินก่อนเวลา', 'เช็กเอาต์ช้า', 'ฉลองวันพิเศษ'];
+  $('#req-chips').innerHTML = REQUEST_CHIPS.map((c) => `<button type="button" class="chip chip-toggle" aria-pressed="false" data-chip="${esc(c)}">${esc(c)}</button>`).join('');
+  $('#req-chips').addEventListener('click', (e) => { const b = e.target.closest('[data-chip]'); if (b) b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')); });
+  $('#req-text').addEventListener('input', () => { $('#req-count').textContent = $('#req-text').value.length; });
+
+  const selectedRoom = () => state.rooms.find((r) => r.room_type === state.selected);
+
+  let pushedCheckout = false;   // เปิดหน้ายืนยันด้วย pushState → ปุ่มกลับใช้ history.back() ได้
+  function openCheckout(rt, { replace = false } = {}) {
+    state.selected = rt; state.view = 'checkout'; pushedCheckout = !replace;
+    $('#home-view').hidden = true; $('#checkout-view').hidden = false;
+    syncUrl(!replace);
+    renderCheckout();
+    scrollTo(0, 0);
+  }
+  function showHome({ fromPop = false } = {}) {
+    state.view = 'home';
+    $('#checkout-view').hidden = true; $('#home-view').hidden = false;
+    if (!fromPop) syncUrl();
+    renderRooms();
+    requestAnimationFrame(() => $('#rooms').scrollIntoView());
+  }
+  $('#co-back').addEventListener('click', () => { if (pushedCheckout) history.back(); else showHome(); });
+  addEventListener('popstate', () => {
+    const p = new URLSearchParams(location.search);
+    if (p.get('step') !== 'checkout' && state.view === 'checkout') { pushedCheckout = false; showHome({ fromPop: true }); }
+  });
+  $('#co-edit-guests').addEventListener('click', () => { showHome(); requestAnimationFrame(() => { $('#search').scrollIntoView({ block: 'center' }); openGuests(); }); });
+
+  function renderLineBox() {
+    const box = $('#co-line'), form = $('#booking-form');
+    const lockSubmit = (on) => { $('#submit-btn').disabled = $('#submit-btn-m').disabled = on; };
+    if (state.liff === 'ready' && state.profile) {
+      const warn = state.isFriend === false;
+      box.innerHTML = `<div class="flex items-center gap-3">
+          ${state.profile.pictureUrl ? `<img src="${esc(safeUrl(state.profile.pictureUrl))}" alt="" class="h-11 w-11 rounded-full object-cover">` : `<span class="grid h-11 w-11 place-items-center rounded-full bg-[#E8F8EF] text-[#06C755]">${ic('message-circle')}</span>`}
+          <div class="min-w-0"><p class="text-xs text-muted">จองผ่านบัญชี LINE</p><p class="truncate font-semibold">${esc(state.profile.displayName || 'ผู้ใช้ LINE')}</p></div>
+          <span class="ml-auto pill bg-[#E8F8EF] text-[#06A247]">${ic('check')} เชื่อมต่อแล้ว</span></div>
+        ${warn ? `<div class="mt-3 rounded-xl border border-gold/50 bg-[#FFFBF0] p-3 text-sm"><p class="font-medium text-gold-deep">ยังไม่ได้เพิ่มโรงแรมเป็นเพื่อนใน LINE</p>
+          <p class="mt-0.5 text-muted">ใบยืนยันและการดูแลระหว่างเข้าพักส่งทาง LINE ได้เฉพาะเพื่อนเท่านั้น</p>
+          ${isConfigured(LINE_OA_BASIC_ID) ? `<a class="mt-2 inline-flex items-center gap-1 font-medium text-[#06A247] underline underline-offset-4" href="https://line.me/R/ti/p/${encodeURIComponent(LINE_OA_BASIC_ID)}" target="_blank" rel="noopener">เพิ่มเพื่อนตอนนี้</a>` : ''}</div>` : ''}`;
+      form.hidden = false; lockSubmit(false);
+    } else if (state.liff === 'guest') {
+      box.innerHTML = `<div class="flex flex-col items-center gap-2 py-2 text-center">
+          <span class="grid h-12 w-12 place-items-center rounded-2xl bg-[#06C755] text-white">${ic('message-circle')}</span>
+          <p class="font-semibold">เข้าสู่ระบบด้วย LINE เพื่อจอง</p>
+          <p class="max-w-sm text-sm text-muted">ระบบส่งใบยืนยันการจองและดูแลคุณระหว่างเข้าพักผ่าน LINE ข้อมูลที่เลือกไว้จะยังอยู่หลังเข้าสู่ระบบ</p>
+          <button type="button" id="co-login" class="btn-line mt-2 w-full max-w-sm px-5 py-3">${ic('log-in')}เข้าสู่ระบบด้วย LINE</button>
+          <a id="co-open-line" class="text-sm text-muted underline underline-offset-4" href="#">หรือเปิดหน้านี้ในแอป LINE</a></div>`;
+      $('#co-login').addEventListener('click', loginWithState);
+      $('#co-open-line').href = liffUrl(writeUrlState(new URL(location.href), true).searchParams.toString());
+      form.hidden = true; lockSubmit(true);
+    } else {
+      const msg = state.liff === 'unconfigured' ? 'ยังไม่ได้ตั้งค่า LIFF_ID ที่ด้านบนไฟล์ index.html จึงยังจองไม่ได้ (ดูห้องและราคาได้ตามปกติ)'
+        : state.liff === 'loading' || state.liff === 'redirecting' ? 'กำลังเชื่อมต่อ LINE…' : (state.liffError || 'เชื่อมต่อ LINE ไม่สำเร็จ');
+      box.innerHTML = `<div class="flex items-start gap-3 text-sm">${state.liff === 'loading' ? '<span class="spinner mt-0.5 text-gold-deep"></span>' : ic('triangle-alert', 'mt-0.5 text-bad')}
+        <div><p class="font-medium">${esc(msg)}</p>${state.liff === 'error' ? '<button type="button" onclick="location.reload()" class="mt-2 text-gold-deep underline">ลองใหม่</button>' : ''}</div></div>`;
+      form.hidden = true; lockSubmit(true);
+    }
+  }
+
+  function renderCheckout() {
+    const r = selectedRoom(), s = state.search || {}, h = state.hotel || {};
+    renderLineBox();
+    $('#co-guests').textContent = `${guestsText()} · ${diffDays(state.q.ci, state.q.co)} คืน`;
+    $('#co-promo').value = state.promoCode || '';
+    renderCoPromo();
+    if (!r) { $('#sum-room').textContent = state.loading ? 'กำลังโหลด…' : 'ไม่พบห้องที่เลือก'; return; }
+    const imgs = (r.images || []).map(safeUrl).filter(Boolean);
+    $('#sum-media').innerHTML = imgs.length ? `<img src="${esc(imgs[0])}" alt="${esc(r.name)}" class="absolute inset-0 h-full w-full object-cover" data-ph="${esc(r.name)}" data-k="3">` : phTile(r.name, 3, 'รอใส่รูปห้องพัก');
+    $('#sum-room').textContent = r.name;
+    $('#sum-ci').textContent = thaiDate(state.q.ci); $('#sum-co').textContent = thaiDate(state.q.co);
+    $('#sum-ci-time').textContent = `ตั้งแต่ ${h.checkin_time || '14:00'} น.`; $('#sum-co-time').textContent = `ก่อน ${h.checkout_time || '12:00'} น.`;
+    $('#sum-stay').textContent = `${s.nights || diffDays(state.q.ci, state.q.co)} คืน · ${guestsText()}${r.bed ? ' · ' + r.bed : ''}`;
+    const canFree = r.free_cancel_until && r.free_cancel_until >= TODAY;
+    $('#sum-cancel').innerHTML = r.free_cancel_until ? (canFree ? `<span class="text-ok">${ic('circle-check', 'inline -mt-0.5')} ยกเลิกฟรีถึง ${thaiDate(r.free_cancel_until)}</span>`
+      : `<span class="text-muted">${ic('calendar-x', 'inline -mt-0.5')} ใกล้วันเข้าพัก ยกเลิกฟรีไม่ได้</span>`) : '';
+    const nights = r.nightly || [];
+    $('#sum-nights').innerHTML = nights.map((n) => `<li class="flex justify-between"><span>${thaiDate(n.date, { weekday: 'short', day: 'numeric', month: 'short' })}${n.weekend ? ' · สุดสัปดาห์' : ''}</span><span>${baht(n.price)}</span></li>`).join('');
+    $('#sum-sub-label').textContent = `ค่าห้อง ${nights.length || s.nights || ''} คืน`;
+    $('#sum-sub').textContent = r.subtotal != null ? baht(r.subtotal) : '—';
+    $('#sum-disc-row').hidden = !r.discount;
+    if (r.discount) { $('#sum-disc-label').textContent = `ส่วนลด ${state.promo?.code || ''}`; $('#sum-disc').textContent = '-' + baht(r.discount); }
+    $('#sum-total').textContent = r.total != null ? baht(r.total) : '—';
+    $('#cta-total').textContent = r.total != null ? baht(r.total) : '—';
+    $$('.submit-label').forEach((el) => { el.textContent = r.total != null ? `ยืนยันการจอง · ${baht(r.total)}` : 'ยืนยันการจอง'; });
+    $('#co-policies').innerHTML = [
+      canFree ? `ยกเลิกฟรีถึง ${thaiDate(r.free_cancel_until)} ผ่านเมนู "การจองของฉัน" ใน LINE` : 'การจองนี้ใกล้วันเข้าพัก ยกเลิกฟรีไม่ได้ หากต้องการเปลี่ยนแปลงกรุณาโทรหาโรงแรม',
+      'ไม่ต้องชำระเงินล่วงหน้า ชำระที่โรงแรมเมื่อเช็กอิน',
+      `เช็กอินตั้งแต่ ${h.checkin_time || '14:00'} น. · แสดงหมายเลขการจองที่เคาน์เตอร์`,
+    ].map((t) => `<li class="flex gap-2">${ic('check', 'mt-0.5 text-ok')}<span>${esc(t)}</span></li>`).join('');
+    const alertBox = $('#co-alert');
+    const problem = state.loading ? '' : !s.valid ? 'วันที่เข้าพักไม่ถูกต้อง กรุณากลับไปเลือกวันที่ใหม่'
+      : !r.fits ? `ห้องนี้พักได้สูงสุด ${r.max_guests} ท่าน กรุณาเลือกห้องอื่นหรือแก้จำนวนผู้เข้าพัก`
+      : r.available <= 0 ? 'ห้องนี้เต็มแล้วในวันที่เลือก กรุณาเลือกห้องอื่น' : '';
+    alertBox.hidden = !problem;
+    alertBox.innerHTML = problem ? `${ic('triangle-alert', 'mt-0.5')}<span>${esc(problem)}</span>` : '';
+    if (problem) $('#submit-btn').disabled = $('#submit-btn-m').disabled = true;
+  }
+  function renderCoPromo() {
+    const box = $('#co-promo-status'), p = state.promo;
+    if (!p) { box.hidden = true; return; }
+    box.hidden = false;
+    box.className = 'mt-2 text-sm ' + (p.valid ? 'text-ok' : 'text-bad');
+    box.textContent = p.valid ? `✓ ใช้โค้ด ${p.code} · ${p.label || `ลด ${p.percent}%`}` : `โค้ด ${p.code}: ${p.message || 'ใช้ไม่ได้'}`;
+  }
+  $('#co-promo-btn').addEventListener('click', () => applyPromo($('#co-promo').value));
+  $('#co-promo').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyPromo($('#co-promo').value); } });
+  $('#sum-toggle').addEventListener('click', () => { const ul = $('#sum-nights'); ul.hidden = !ul.hidden; $('#sum-toggle').setAttribute('aria-expanded', String(!ul.hidden)); });
+
+  /* ---------------- Validation ---------------- */
+  const form = $('#booking-form');
+  const rules = {
+    full_name: () => { const v = form.full_name.value.trim(); return (v.length >= 2 && v.length <= 100) || 'กรุณากรอกชื่อ-นามสกุล'; },
+    phone: () => /^0[689]\d{8}$/.test(normPhone(form.phone.value)) || 'เบอร์มือถือไทย 10 หลัก ขึ้นต้นด้วย 06, 08 หรือ 09',
+    email: () => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.value.trim()) || 'รูปแบบอีเมลไม่ถูกต้อง',
+    consent: () => form.consent.checked || 'กรุณายืนยันการยินยอม',
+  };
+  function setFieldError(name, msg) {
+    const el = form.elements[name], err = $('#err-' + name);
+    if (msg) { el.setAttribute('aria-invalid', 'true'); err.textContent = msg; } else { el.removeAttribute('aria-invalid'); err.textContent = ''; }
+  }
+  const validate = (n) => { const r = rules[n](); setFieldError(n, r === true ? '' : r); return r === true; };
+  function validateAll() {
+    let first = null;
+    for (const n of Object.keys(rules)) if (!validate(n) && !first) first = n;
+    if (first) form.elements[first].focus();
+    return !first;
+  }
+  ['full_name', 'phone', 'email'].forEach((n) => {
+    form.elements[n].addEventListener('blur', () => form.elements[n].value && validate(n));
+    form.elements[n].addEventListener('input', () => setFieldError(n, ''));
+  });
+  form.consent.addEventListener('change', () => validate('consent'));
+
+  /* ---------------- Submit ---------------- */
+  let pendingRequestId = null, submitting = false;
+  form.addEventListener('input', () => { pendingRequestId = null; });
+  function setLoading(on) {
+    submitting = on;
+    $$('#submit-btn, #submit-btn-m').forEach((b) => { b.disabled = on; b.querySelector('.spinner').hidden = !on; });
+    if (on) $$('.submit-label').forEach((el) => { el.textContent = 'กำลังส่งการจอง…'; });
+    else renderCheckout();
+    $$('input, select, textarea, #req-chips button', form).forEach((i) => { i.disabled = on; });
+  }
+  function specialRequests() {
+    const chips = $$('#req-chips [aria-pressed="true"]').map((b) => b.dataset.chip);
+    const txt = $('#req-text').value.trim().replace(/\s+/g, ' ');
+    return [chips.join(', '), txt].filter(Boolean).join(' · ').slice(0, 500);
+  }
+  function httpMessage(status) {
+    if (status === 404) return 'ไม่พบระบบรับจอง (Workflow ยังไม่ได้ Publish หรือ URL ผิด)';
+    if (status === 400 || status === 422) return 'ข้อมูลการจองไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
+    if (status === 401 || status === 403) return 'ยืนยันตัวตน LINE ไม่สำเร็จ กรุณาปิดแล้วเปิดหน้านี้ใหม่';
+    if (status === 409) return 'ห้องประเภทนี้เพิ่งเต็ม กรุณาเลือกห้องอื่น';
+    if (status >= 500) return 'ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้ง';
+    return 'ส่งการจองไม่สำเร็จ (HTTP ' + status + ')';
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (submitting) return;
+    const r = selectedRoom();
+    if (!r || state.liff !== 'ready') return;
+    if (!validateAll()) return;
+
+    let idToken = null;
+    if (!PREVIEW) {
+      const decoded = liff.getDecodedIDToken?.();
+      if (decoded?.exp && decoded.exp * 1000 < Date.now() + 30000) {
+        return openDialog('error', state.inClient ? { message: 'เซสชัน LINE หมดอายุ กรุณาปิดแล้วเปิดหน้านี้ใหม่' }
+          : { message: 'เซสชัน LINE หมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง', actionLabel: 'เข้าสู่ระบบใหม่', action: () => { liff.logout(); loginWithState(); } });
+      }
+      idToken = liff.getIDToken();
+    }
+    pendingRequestId = pendingRequestId || newRequestId();
+    const payload = {
+      full_name: form.full_name.value.trim(), phone: normPhone(form.phone.value), email: form.email.value.trim().toLowerCase(),
+      check_in: state.q.ci, check_out: state.q.co, room_type: r.room_type, adults: state.q.adults, children: state.q.children,
+      arrival_time: $('#arrival_time').value, special_requests: specialRequests(), promo_code: state.promo?.valid ? state.promo.code : '',
+      line_user_id: state.profile.userId, line_display_name: state.profile.displayName || '', line_friend: state.isFriend,
+      id_token: idToken, pdpa_consent: true, client_request_id: pendingRequestId,
+      source: PREVIEW ? 'preview' : (state.inClient ? 'liff' : 'web'),
+    };
+    setLoading(true);
+    try {
+      let res;
+      if (PREVIEW) { await new Promise((ok) => setTimeout(ok, 900)); console.log('[preview] payload', payload);
+        res = { ok: true, status: 200, data: { success: true, booking_id: 'BK-PREVIEW-0000', line_sent: true, price_total: r.total, discount: r.discount, nights: state.search.nights, room_name: r.name } };
+      } else res = await request(API.booking, { method: 'POST', body: payload });
+      const d = res.data;
+      if (res.ok && d?.success === true) onBooked(d, r);
+      else if (res.ok && !d) openDialog('error', { message: 'ระบบตอบกลับผิดรูปแบบ (ตรวจว่า Workflow ตอบด้วย Respond to Webhook แบบ JSON)' });
+      else if (res.status === 409) openDialog('error', { title: 'ห้องเต็มแล้ว', message: (d && d.message) || httpMessage(409), actionLabel: 'เลือกห้องอื่น',
+        action: () => { closeDialog(); showHome(); loadHotel(); } });
+      else openDialog('error', { message: (d && d.success === false && d.message) || httpMessage(res.status) });
+    } catch (err) {
+      console.error('[booking] fetch failed', err);
+      openDialog('error', { message: err?.name === 'AbortError'
+        ? 'ระบบตอบกลับช้าเกินไป กรุณาตรวจใน LINE ก่อนว่าได้รับใบยืนยันหรือยัง แล้วค่อยลองใหม่'
+        : 'เชื่อมต่อระบบจองไม่ได้ ตรวจอินเทอร์เน็ต หรือระบบอาจปิดอยู่' });
+    } finally { setLoading(false); }
+  });
+
+  function onBooked(d, r) {
+    pendingRequestId = null;
+    const lines = [
+      ['ห้องพัก', d.room_name || r.name], ['เข้าพัก', `${thaiDate(state.q.ci)} → ${thaiDate(state.q.co)}`],
+      ['ผู้เข้าพัก', `${guestsText()} · ${d.nights || state.search?.nights} คืน`],
+      ...(d.discount ? [['ส่วนลด', '-' + baht(d.discount)]] : []), ['ยอดชำระที่โรงแรม', baht(d.price_total ?? r.total)],
+    ];
+    openDialog('success', { ...d, lines });
+    form.reset(); $$('#req-chips [aria-pressed]').forEach((b) => b.setAttribute('aria-pressed', 'false')); $('#req-count').textContent = '0';
+    if (state.promo?.personal) { state.promoCode = ''; state.promo = null; }
+  }
+
+  /* =========================================================
+     Dialog
+     ========================================================= */
+  const dlg = $('#result-dialog');
+  let dlgAction = () => closeDialog(), dlgSecondary = null;
+  function closeDialog() { if (dlg.open) dlg.close(); else dlg.removeAttribute('open'); }
+  function openDialog(kind, data = {}) {
+    const ok = kind === 'success';
+    const icon = $('#dlg-icon');
+    icon.className = 'mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full ' + (ok ? 'bg-[#E9F5EE] text-ok' : 'bg-[#FDECEA] text-bad');
+    icon.innerHTML = ic(ok ? 'party-popper' : 'circle-alert', '!h-7 !w-7');
+    $('#dlg-secondary').hidden = true; dlgSecondary = null;
+    if (ok) {
+      const lineSent = data.line_sent !== false;
+      $('#dlg-title').textContent = 'จองสำเร็จ!';
+      $('#dlg-msg').textContent = lineSent ? 'ส่งใบยืนยันเข้า LINE ของคุณแล้ว แสดงหมายเลขนี้ที่เคาน์เตอร์ตอนเช็กอิน'
+        : 'บันทึกการจองเรียบร้อย แต่ส่งใบยืนยันทาง LINE ไม่สำเร็จ กรุณาเพิ่มโรงแรมเป็นเพื่อน หรือแจ้งหมายเลขนี้ที่เคาน์เตอร์';
+      $('#dlg-booking-id').textContent = data.booking_id || '—';
+      $('#dlg-copy').textContent = 'คัดลอก';
+      $('#dlg-lines').innerHTML = (data.lines || []).map(([k, v]) => `<div class="flex justify-between gap-3"><span class="text-muted">${esc(k)}</span><span class="text-right font-medium">${esc(v)}</span></div>`).join('');
+      $('#dlg-booking').hidden = false;
+      const inClient = !PREVIEW && state.inClient;
+      $('#dlg-primary').textContent = inClient ? 'กลับไปที่แชท' : 'เสร็จสิ้น';
+      dlgAction = () => { closeDialog(); if (inClient) liff.closeWindow(); else { showHome(); loadHotel(); } };
+    } else {
+      $('#dlg-title').textContent = data.title || 'จองไม่สำเร็จ';
+      $('#dlg-msg').textContent = data.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่';
+      $('#dlg-booking').hidden = true;
+      $('#dlg-primary').textContent = data.actionLabel || 'ลองอีกครั้ง';
+      dlgAction = data.action || (() => closeDialog());
+    }
+    if (typeof dlg.showModal === 'function') { if (!dlg.open) dlg.showModal(); } else dlg.setAttribute('open', '');
+    $('#dlg-primary').focus();
+  }
+  $('#dlg-primary').addEventListener('click', () => dlgAction());
+  $('#dlg-secondary').addEventListener('click', () => dlgSecondary && dlgSecondary());
+  $('#dlg-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#dlg-booking-id').textContent); $('#dlg-copy').textContent = 'คัดลอกแล้ว ✓'; } catch { /* ignore */ } });
+
+  /* =========================================================
+     PREVIEW (?preview=1): ข้อมูลตัวอย่าง ไม่เรียก n8n
+     ========================================================= */
+  async function previewHotelApi(params) {
+    await new Promise((ok) => setTimeout(ok, 350));
+    const q = Object.fromEntries(params);
+    const types = [
+      { room_type: 'Superior', name: 'Superior Room', description: 'ห้องกะทัดรัด เหมาะกับการพักผ่อนระยะสั้น', size_sqm: 28, bed: 'เตียงควีน 1 เตียง', view: 'วิวเมือง', max_guests: 2, amenities: ['แอร์', 'ทีวี', 'ตู้เย็น', 'ไดร์เป่าผม', 'ฝักบัว'], images: [], price: 1800, weekend_price: 2200, avail: 4 },
+      { room_type: 'Deluxe', name: 'Deluxe Room', description: 'ห้องกว้างพร้อมระเบียงส่วนตัว', size_sqm: 36, bed: 'เตียงคิงไซซ์ 1 เตียง', view: 'ระเบียงส่วนตัว', max_guests: 3, amenities: ['แอร์', 'สมาร์ททีวี', 'มินิบาร์', 'อ่างอาบน้ำ', 'เครื่องชงกาแฟ', 'ตู้เย็น', 'ไดร์เป่าผม'], images: [], price: 2500, weekend_price: 2900, avail: 1 },
+      { room_type: 'Suite', name: 'Sai Lan Suite', description: 'สวีทหรูพร้อมห้องนั่งเล่นแยก สำหรับครอบครัว', size_sqm: 60, bed: 'เตียงคิงไซซ์ + โซฟาเบด', view: 'ห้องนั่งเล่นแยก', max_guests: 4, amenities: ['แอร์', 'สมาร์ททีวี 2 เครื่อง', 'อ่างอาบน้ำ', 'เครื่องชงกาแฟ', 'โต๊ะทำงาน'], images: [], price: 4200, weekend_price: null, avail: 2 },
+    ];
+    const code = (q.promo || '').toUpperCase();
+    const promo = !code ? null : code === 'WELCOME10' ? { code, valid: true, percent: 10, label: 'ส่วนลดจองตรงครั้งแรก 10%', message: '', personal: false }
+      : /^BACK-[A-Z0-9]{4}$/.test(code) ? { code, valid: true, percent: 10, label: 'ดีลพิเศษสำหรับคุณ ลด 10%', message: '', personal: true }
+      : { code, valid: false, percent: 0, label: '', message: 'ไม่พบโค้ดส่วนลดนี้', personal: false };
+    const nights = diffDays(q.check_in, q.check_out);
+    const valid = isYmd(q.check_in) && isYmd(q.check_out) && q.check_in >= TODAY && nights >= 1 && nights <= 30;
+    const guests = Number(q.adults) + Number(q.children);
+    const rooms = types.map((t) => {
+      const r = { ...t, fits: guests <= t.max_guests, available: null, nightly: [], subtotal: null, discount: 0, total: null, avg_per_night: null, free_cancel_until: null };
+      delete r.avail;
+      if (valid) {
+        for (let i = 0; i < nights; i++) { const d = addDays(q.check_in, i); const wd = new Date(d + 'T00:00:00Z').getUTCDay(); const we = wd === 5 || wd === 6;
+          r.nightly.push({ date: d, price: we && t.weekend_price ? t.weekend_price : t.price, weekend: we }); }
+        r.subtotal = r.nightly.reduce((s, n) => s + n.price, 0);
+        r.discount = promo?.valid ? Math.round(r.subtotal * promo.percent / 100) : 0;
+        Object.assign(r, { available: t.avail, total: r.subtotal - r.discount, avg_per_night: Math.round(r.subtotal / nights), free_cancel_until: addDays(q.check_in, -1) });
+      }
+      return r;
     });
+    return { success: true, today: TODAY, rooms, promo,
+      search: { check_in: q.check_in, check_out: q.check_out, adults: Number(q.adults), children: Number(q.children), nights: valid ? nights : 0, valid, message: valid ? '' : 'วันที่ไม่ถูกต้อง' },
+      rating: { average: 4.6, count: 18, distribution: { 5: 12, 4: 5, 3: 1, 2: 0, 1: 0 } },
+      hotel: { name: 'Sai Lan Hotel', tagline: 'พักผ่อนเหนือระดับ ดูแลคุณทุกช่วงเวลา', description: 'โรงแรมบูทีคใจกลางเมือง เดินทางสะดวก บริการอบอุ่นแบบไทย (ข้อมูลตัวอย่างในโหมด Preview)',
+        stars: 4, address: '61 ถนนพหลโยธิน แขวงอนุสาวรีย์ เขตบางเขน กรุงเทพฯ 10220', map_url: '', phone: '02-123-4567', checkin_time: '14:00', checkout_time: '12:00',
+        breakfast_time: '06:30-10:30', amenities: ['ฟรี WiFi', 'สระว่ายน้ำ', 'ที่จอดรถฟรี', 'อาหารเช้า', 'ฟิตเนส', 'รูมเซอร์วิส 24 ชม.'], gallery: [],
+        policies: { free_cancel_days: 1, child: 'เด็กอายุต่ำกว่า 6 ปีพักฟรีเมื่อใช้เตียงเดิม', pet: 'ไม่อนุญาตสัตว์เลี้ยง · ห้องพักปลอดบุหรี่', payment: 'ชำระเงินที่โรงแรมเมื่อเช็กอิน (เงินสด / โอน / บัตร)' } } };
+  }
 
-    /* =========================================================
-       Three.js — Golden particles
-       เบา: pixelRatio ≤ 2, มือถือใช้อนุภาคน้อยลง + 30fps,
-       หยุด render เมื่อซ่อนแท็บ, prefers-reduced-motion = ภาพนิ่ง
-       ========================================================= */
-    function initParticles() {
-      const canvas = $('#bg');
-      const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const isMobile = matchMedia('(pointer: coarse)').matches || innerWidth < 768;
-      const COUNT = reduceMotion ? 300 : isMobile ? 600 : 1500;
-
-      let renderer;
-      try {
-        renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: 'low-power' });
-      } catch { canvas.remove(); return; } // ไม่มี WebGL: ใช้พื้นหลัง gradient อย่างเดียว
-
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-      renderer.setSize(innerWidth, innerHeight, false);
-
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
-      camera.position.z = 12;
-
-      const base = new Float32Array(COUNT * 3);
-      const pos = new Float32Array(COUNT * 3);
-      const col = new Float32Array(COUNT * 3);
-      const seed = new Float32Array(COUNT);
-      const palette = ['#FFF4D6', '#F3D98B', '#D4AF6A', '#B08D3E'].map((c) => new THREE.Color(c));
-      for (let i = 0; i < COUNT; i++) {
-        base[i * 3] = (Math.random() - 0.5) * 30;
-        base[i * 3 + 1] = (Math.random() - 0.5) * 20;
-        base[i * 3 + 2] = (Math.random() - 0.5) * 14;
-        seed[i] = Math.random() * Math.PI * 2;
-        const c = palette[(Math.random() * palette.length) | 0];
-        col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
-      }
-      pos.set(base);
-
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-
-      // sprite วงกลมนุ่ม ๆ วาดจาก canvas (ไม่ต้องโหลดรูป)
-      const sc = document.createElement('canvas'); sc.width = sc.height = 64;
-      const g = sc.getContext('2d');
-      const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-      grd.addColorStop(0, 'rgba(255,255,255,1)');
-      grd.addColorStop(0.35, 'rgba(255,255,255,.55)');
-      grd.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
-      const sprite = new THREE.CanvasTexture(sc);
-
-      const mat = new THREE.PointsMaterial({
-        size: isMobile ? 0.16 : 0.13, map: sprite, vertexColors: true, transparent: true,
-        opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true,
-      });
-      const points = new THREE.Points(geo, mat);
-      scene.add(points);
-
-      // Parallax: เมาส์ / นิ้ว / การเอียงเครื่อง (Android; iOS ต้องขอสิทธิ์จึงไม่เปิด)
-      const target = { x: 0, y: 0 };
-      const clamp = (v) => Math.max(-1, Math.min(1, v));
-      if (!reduceMotion) {
-        addEventListener('pointermove', (e) => {
-          target.x = (e.clientX / innerWidth) * 2 - 1;
-          target.y = (e.clientY / innerHeight) * 2 - 1;
-        }, { passive: true });
-        addEventListener('deviceorientation', (e) => {
-          if (e.gamma == null || e.beta == null) return;
-          target.x = clamp(e.gamma / 30);
-          target.y = clamp((e.beta - 45) / 30);
-        }, { passive: true });
-      }
-
-      function update(t) {
-        for (let i = 0; i < COUNT; i++) {
-          const s = seed[i];
-          pos[i * 3] = base[i * 3] + Math.cos(t * 0.25 + s) * 0.3;
-          pos[i * 3 + 1] = base[i * 3 + 1] + Math.sin(t * 0.35 + s) * 0.45;
-        }
-        geo.attributes.position.needsUpdate = true;
-        points.rotation.y += (target.x * 0.22 + t * 0.01 - points.rotation.y) * 0.04;
-        points.rotation.x += (target.y * 0.12 - points.rotation.x) * 0.04;
-      }
-
-      const clock = new THREE.Clock();
-      let rafId = null, running = false, tick = 0;
-      function frame() {
-        rafId = requestAnimationFrame(frame);
-        if (isMobile && (tick++ & 1)) return; // มือถือ ~30fps
-        update(clock.getElapsedTime());
-        renderer.render(scene, camera);
-      }
-      function start() { if (running || reduceMotion) return; running = true; frame(); }
-      function stop() { running = false; if (rafId) cancelAnimationFrame(rafId); rafId = null; }
-
-      document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
-
-      let resizeTimer;
-      addEventListener('resize', () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => {
-          camera.aspect = innerWidth / innerHeight;
-          camera.updateProjectionMatrix();
-          renderer.setSize(innerWidth, innerHeight, false);
-          if (reduceMotion) renderer.render(scene, camera);
-        }, 150);
-      });
-
-      if (reduceMotion) { update(0); renderer.render(scene, camera); } // ภาพนิ่ง 1 เฟรม
-      else start();
+  /* =========================================================
+     Three.js — อนุภาคสีทองเฉพาะส่วน Hero (เบา: pixelRatio ≤ 2, มือถือ 30fps,
+     หยุดเมื่อเลื่อนพ้น Hero หรือซ่อนแท็บ, prefers-reduced-motion = ภาพนิ่ง)
+     ========================================================= */
+  function initParticles() {
+    const canvas = $('#bg'), hero = $('#hero');
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = matchMedia('(pointer: coarse)').matches || innerWidth < 768;
+    const COUNT = reduceMotion ? 250 : isMobile ? 450 : 1100;
+    let renderer;
+    try { renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: 'low-power' }); }
+    catch { canvas.remove(); return; }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    const size = () => [hero.clientWidth, hero.clientHeight];
+    renderer.setSize(...size(), false);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, size()[0] / size()[1], 0.1, 100);
+    camera.position.z = 12;
+    const base = new Float32Array(COUNT * 3), pos = new Float32Array(COUNT * 3), col = new Float32Array(COUNT * 3), seed = new Float32Array(COUNT);
+    const palette = ['#FFF4D6', '#F3D98B', '#D4AF6A', '#B08D3E'].map((c) => new THREE.Color(c));
+    for (let i = 0; i < COUNT; i++) {
+      base[i * 3] = (Math.random() - 0.5) * 30; base[i * 3 + 1] = (Math.random() - 0.5) * 18; base[i * 3 + 2] = (Math.random() - 0.5) * 12;
+      seed[i] = Math.random() * Math.PI * 2;
+      const c = palette[(Math.random() * palette.length) | 0]; col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
     }
+    pos.set(base);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const sc = document.createElement('canvas'); sc.width = sc.height = 64;
+    const g = sc.getContext('2d'); const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.35, 'rgba(255,255,255,.55)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+    const mat = new THREE.PointsMaterial({ size: isMobile ? 0.16 : 0.13, map: new THREE.CanvasTexture(sc), vertexColors: true, transparent: true,
+      opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true });
+    const points = new THREE.Points(geo, mat);
+    scene.add(points);
+    const target = { x: 0, y: 0 };
+    if (!reduceMotion) addEventListener('pointermove', (e) => { target.x = (e.clientX / innerWidth) * 2 - 1; target.y = (e.clientY / innerHeight) * 2 - 1; }, { passive: true });
+    function update(t) {
+      for (let i = 0; i < COUNT; i++) { const s = seed[i]; pos[i * 3] = base[i * 3] + Math.cos(t * 0.25 + s) * 0.3; pos[i * 3 + 1] = base[i * 3 + 1] + Math.sin(t * 0.35 + s) * 0.45; }
+      geo.attributes.position.needsUpdate = true;
+      points.rotation.y += (target.x * 0.2 + t * 0.01 - points.rotation.y) * 0.04;
+      points.rotation.x += (target.y * 0.1 - points.rotation.x) * 0.04;
+    }
+    const clock = new THREE.Clock();
+    let raf = null, running = false, tick = 0, visible = true;
+    function frame() { raf = requestAnimationFrame(frame); if (isMobile && (tick++ & 1)) return; update(clock.getElapsedTime()); renderer.render(scene, camera); }
+    const start = () => { if (running || reduceMotion || !visible || document.hidden) return; running = true; frame(); };
+    const stop = () => { running = false; if (raf) cancelAnimationFrame(raf); raf = null; };
+    document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+    if ('IntersectionObserver' in window) new IntersectionObserver((ents) => { visible = ents[0].isIntersecting; visible ? start() : stop(); }).observe(hero);
+    const onResize = () => { const [w, h] = size(); if (!w || !h) return; camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h, false); if (reduceMotion) renderer.render(scene, camera); };
+    if ('ResizeObserver' in window) new ResizeObserver(onResize).observe(hero); else addEventListener('resize', onResize);
+    if (reduceMotion) { update(0); renderer.render(scene, camera); } else start();
+  }
 
-    /* ---------------- Boot ---------------- */
+  /* =========================================================
+     Boot
+     ========================================================= */
+  (async function boot() {
     try { initParticles(); } catch (e) { console.warn('particles disabled', e); }
-    initLiff();
-  </script>
+    syncSearchForm(); renderAside(); renderRooms(); renderGallery();
+    if (isConfigured(LINE_OA_BASIC_ID)) { const a = $('#aside-line'); a.href = 'https://line.me/R/ti/p/' + encodeURIComponent(LINE_OA_BASIC_ID); a.hidden = false; }
+    await initLiff();
+    if (state.liff === 'redirecting') return;
+    const { step, rt } = readUrlState();         // อ่านหลัง liff.init (LIFF ส่ง query ต่อมาทาง liff.state)
+    syncSearchForm(); renderTopbarUser(); renderAside();
+    await loadHotel();
+    if (state.promoCode) renderPromo();
+    if (step === 'checkout' && rt && state.rooms.some((r) => r.room_type === rt)) openCheckout(rt, { replace: true });
+    else syncUrl();
+  })();
+</script>
 </body>
 </html>
