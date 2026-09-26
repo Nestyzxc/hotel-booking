@@ -78,6 +78,7 @@
       .hk-Dirty { background: #FDECEA; color: #B23A2E; }
       .hk-Cleaning { background: #FEF5E1; color: #9A6412; }
       .hk-Out-of-Order { background: #E5E7EB; color: #4B5563; }
+      .hk-Occupied { background: #FDF1E3; color: #A45A13; border: 1px solid #E8B86A; }
       .nav-btn { display: flex; align-items: center; gap: .7rem; width: 100%; padding: .65rem .8rem; border-radius: 12px; color: rgba(250,247,240,.72); font-size: .92rem; }
       .nav-btn:hover { background: rgba(255,255,255,.06); color: #FAF7F0; }
       .nav-btn[aria-current="page"] { background: rgba(212,175,106,.16); color: #F3D98B; font-weight: 600; }
@@ -343,13 +344,16 @@
   /* ---------- ข้อความ/สถานะ ---------- */
   const ACTIVE = ['Confirmed', 'Checked-in', 'Need Attention'], INHOUSE = ['Checked-in', 'Need Attention'];
   const ST = { 'Confirmed': 'ยืนยันแล้ว', 'Checked-in': 'กำลังเข้าพัก', 'Need Attention': 'ต้องดูแลด่วน', 'Checked-out': 'เช็กเอาต์แล้ว', 'Cancelled': 'ยกเลิก', 'No-show': 'ไม่มาเข้าพัก' };
-  const HK = { 'Clean': 'พร้อมเข้าพัก', 'Dirty': 'รอทำความสะอาด', 'Cleaning': 'กำลังทำความสะอาด', 'Out of Order': 'ปิดปรับปรุง' };
-  const HK_ICON = { 'Clean': 'circle-check', 'Dirty': 'spray-can', 'Cleaning': 'brush-cleaning', 'Out of Order': 'wrench' };
+  const HK = { 'Clean': 'พร้อมเข้าพัก', 'Dirty': 'รอทำความสะอาด', 'Cleaning': 'กำลังทำความสะอาด', 'Out of Order': 'ปิดปรับปรุง', 'Occupied': 'มีผู้พักแล้ว' };
+  const HK_ICON = { 'Clean': 'circle-check', 'Dirty': 'spray-can', 'Cleaning': 'brush-cleaning', 'Out of Order': 'wrench', 'Occupied': 'user-check' };
   const SRC = { liff: 'LINE', web: 'เว็บไซต์', 'Walk-in': 'Walk-in', Phone: 'โทรศัพท์', Agoda: 'Agoda', 'Booking.com': 'Booking.com', 'Trip.com': 'Trip.com', Expedia: 'Expedia', Other: 'อื่น ๆ' };
   const OTA = ['Agoda', 'Booking.com', 'Trip.com', 'Expedia'];
   const PAY = { Unpaid: 'ยังไม่ชำระ', Deposit: 'มัดจำแล้ว', Paid: 'ชำระแล้ว' };
   const stBadge = (s) => `<span class="badge st-${esc(String(s).replace(/ /g, '-'))}">${esc(ST[s] || s)}</span>`;
-  const hkBadge = (s) => `<span class="badge hk-${esc(String(s).replace(/ /g, '-'))}">${ic(HK_ICON[s] || 'info')}${esc(HK[s] || s)}</span>`;
+  const hkBadge = (s, roomNo) => {
+    const eff = (s === 'Clean' && roomNo && occupant(roomNo)) ? 'Occupied' : s;
+    return `<span class="badge hk-${esc(String(eff).replace(/ /g, '-'))}">${ic(HK_ICON[eff] || 'info')}${esc(HK[eff] || eff)}</span>`;
+  };
   const guests = (b) => `${num(b.adults, 1)} ผู้ใหญ่${num(b.children) ? ` · ${num(b.children)} เด็ก` : ''}`;
 
   /* ---------- State ---------- */
@@ -584,7 +588,7 @@
     $('#dash-dirty').innerHTML = L.dirty.length ? `<ul class="divide-y divide-[#F0EBE0]">${L.dirty.map((r) => {
       const n = nextArrival(r.room_number); const occ2 = occupant(r.room_number);
       return `<li class="flex items-center gap-3 px-4 py-3"><span class="w-12 font-serif text-lg font-bold">${esc(r.room_number)}</span>
-        <div class="min-w-0 flex-1"><p class="text-sm">${hkBadge(r.hk_status)} <span class="text-xs text-muted">${esc(r.hk_note || '')}</span></p>
+        <div class="min-w-0 flex-1"><p class="text-sm">${hkBadge(r.hk_status, r.room_number)} <span class="text-xs text-muted">${esc(r.hk_note || '')}</span></p>
         <p class="truncate text-xs ${n && n.check_in === t ? 'font-semibold text-bad' : 'text-muted'}">${occ2 ? 'มีแขกพักอยู่' : n ? `แขกถัดไป ${n.check_in === t ? 'วันนี้' : fmt(n.check_in)} · ${esc(n.full_name)}` : 'ยังไม่มีแขกถัดไป'}</p></div>
         <button class="btn btn-ok btn-sm" data-act="clean" data-id="${esc(r.room_number)}">${ic('check')}พร้อมแล้ว</button></li>`; }).join('')}</ul>`
       : '<p class="px-4 pb-4 text-sm text-muted">ทุกห้องพร้อมเข้าพัก 🎉</p>';
@@ -653,7 +657,15 @@
   /* ---------- Rooms ---------- */
   function renderRooms() {
     const t = T();
-    const counts = Object.keys(HK).map((k) => [k, S.rooms.filter((r) => r.hk_status === k).length]);
+    const counts = Object.keys(HK).map((k) => {
+      if (k === 'Occupied') {
+        return [k, S.rooms.filter((r) => r.hk_status === 'Clean' && occupant(r.room_number)).length];
+      }
+      if (k === 'Clean') {
+        return [k, S.rooms.filter((r) => r.hk_status === 'Clean' && !occupant(r.room_number)).length];
+      }
+      return [k, S.rooms.filter((r) => r.hk_status === k).length];
+    });
     $('#hk-summary').innerHTML = counts.map(([k, n]) => `<span class="badge hk-${k.replace(/ /g, '-')} !px-3 !py-1.5 !text-sm">${ic(HK_ICON[k])}${HK[k]} ${n}</span>`).join('');
     const floors = {};
     for (const r of S.rooms) { const f = r.floor || String(r.room_number).slice(0, -2) || '-'; (floors[f] = floors[f] || []).push(r); }
@@ -663,7 +675,7 @@
         const line = occ ? `${ic('user', 'inline')} ${esc(occ.full_name)} · ${occ.check_out <= t ? '<b class="text-bad">ออกวันนี้</b>' : 'ถึง ' + fmt(occ.check_out)}`
           : n ? `${n.check_in === t ? '<b class="text-[#2B5FA8]">⚡ เข้าวันนี้</b>' : 'ว่าง · เข้า ' + fmt(n.check_in)} · ${esc(n.full_name)}` : 'ว่าง';
         return `<button type="button" class="room-tile" data-room="${esc(r.room_number)}">
-          <div class="flex items-start justify-between gap-2"><span class="font-serif text-2xl font-bold">${esc(r.room_number)}</span>${hkBadge(r.hk_status)}</div>
+          <div class="flex items-start justify-between gap-2"><span class="font-serif text-2xl font-bold">${esc(r.room_number)}</span>${hkBadge(r.hk_status, r.room_number)}</div>
           <p class="text-xs text-muted">${esc(typeName(r.room_type))}</p>
           <p class="mt-2 truncate text-xs">${line}</p>${r.hk_note ? `<p class="mt-1 truncate text-[11px] text-muted">${esc(r.hk_note)}</p>` : ''}</button>`; }).join('')}</div></div>`).join('');
     renderTimeline();
@@ -726,7 +738,7 @@
     const sel = $('#nb-room'), prev = sel.value;
     const free = nb.type ? (av[nb.type]?.free || []) : [];
     setHTML(sel, `<option value="">${nb.type ? 'ให้ระบบเลือกห้องที่พร้อม' : 'เลือกประเภทห้องก่อน'}</option>` +
-      free.map((r) => `<option value="${esc(r.room_number)}">${esc(r.room_number)} · ${HK[r.hk_status]}${occupant(r.room_number) ? ' · แขกเดิมยังไม่ออก' : ''}</option>`).join(''));
+      free.map((r) => `<option value="${esc(r.room_number)}">${esc(r.room_number)} · ${occupant(r.room_number) ? HK.Occupied + ' · แขกเดิมยังไม่ออก' : HK[r.hk_status]}</option>`).join(''));
     sel.value = free.some((r) => r.room_number === prev) ? prev : '';
     sel.disabled = !nb.type;
     const nowOk = ci === t;
@@ -891,7 +903,7 @@
     const busy = new Set(S.bookings.filter((x) => x.booking_id !== b.booking_id && ACTIVE.includes(x.status) && x.room_number && overlaps(from, b.check_out, x.check_in, x.check_out)).map((x) => x.room_number));
     return S.rooms.filter((r) => r.hk_status !== 'Out of Order' && !busy.has(r.room_number) && (includeCurrent || r.room_number !== b.room_number))
       .sort((a, c) => (a.room_type === b.room_type ? 0 : 1) - (c.room_type === b.room_type ? 0 : 1) || a.room_number.localeCompare(c.room_number, 'en', { numeric: true }))
-      .map((r) => { const occ = occupant(r.room_number); return `<option value="${esc(r.room_number)}" ${r.room_number === b.room_number ? 'selected' : ''}>${esc(r.room_number)} · ${esc(typeName(r.room_type))} · ${HK[r.hk_status]}${occ && occ.booking_id !== b.booking_id ? ' · แขกเดิมยังไม่ออก' : ''}</option>`; }).join('');
+      .map((r) => { const occ = occupant(r.room_number); const lbl = occ && occ.booking_id !== b.booking_id ? HK.Occupied + ' · แขกเดิมยังไม่ออก' : HK[r.hk_status]; return `<option value="${esc(r.room_number)}" ${r.room_number === b.room_number ? 'selected' : ''}>${esc(r.room_number)} · ${esc(typeName(r.room_type))} · ${lbl}</option>`; }).join('');
   };
 
   async function quickAction(kind, id, el) {
@@ -950,12 +962,13 @@
   function roomModal(no) {
     const r = roomByNo(no); if (!r) return;
     const occ = occupant(no), n = nextArrival(no);
-    openModal(`<div class="flex items-start justify-between gap-3"><div><h3 class="font-serif text-2xl font-bold">ห้อง ${esc(r.room_number)}</h3><p class="text-sm text-muted">${esc(typeName(r.room_type))} · ชั้น ${esc(r.floor || '-')}</p></div>${hkBadge(r.hk_status)}</div>
+      openModal(`<div class="flex items-start justify-between gap-3"><div><h3 class="font-serif text-2xl font-bold">ห้อง ${esc(r.room_number)}</h3><p class="text-sm text-muted">${esc(typeName(r.room_type))} · ชั้น ${esc(r.floor || '-')}</p></div>${hkBadge(r.hk_status, r.room_number)}</div>
       <div class="mt-3 space-y-1 text-sm">${occ ? `<p>แขกปัจจุบัน: <button class="font-semibold underline" data-open="${esc(occ.booking_id)}">${esc(occ.full_name)}</button> · ออก ${fmt(occ.check_out)}</p>` : '<p class="text-muted">ไม่มีแขกพักอยู่</p>'}
         ${n ? `<p>แขกถัดไป: <button class="font-semibold underline" data-open="${esc(n.booking_id)}">${esc(n.full_name)}</button> · เข้า ${fmt(n.check_in)}</p>` : ''}
         ${r.hk_updated_at ? `<p class="text-xs text-muted">อัปเดตล่าสุด ${esc(fmtTs(r.hk_updated_at))} โดย ${esc(r.hk_updated_by || '-')}</p>` : ''}</div>
       <div class="mt-4"><label class="label" for="rm-note">หมายเหตุ</label><input id="rm-note" class="field" maxlength="200" value="${esc(r.hk_note)}" placeholder="เช่น เปลี่ยนผ้าม่าน"></div>
-      <p class="label mt-4">เปลี่ยนสถานะ</p><div class="grid grid-cols-2 gap-2">${Object.keys(HK).map((k) => `<button type="button" class="btn ${k === r.hk_status ? 'btn-dark' : 'btn-outline'}" data-hk="${k}">${ic(HK_ICON[k])}${HK[k]}</button>`).join('')}</div>
+      <p class="label mt-4">เปลี่ยนสถานะ</p><div class="grid grid-cols-2 gap-2">${Object.keys(HK).filter((k) => k !== 'Occupied').map((k) => `<button type="button" class="btn ${k === r.hk_status ? 'btn-dark' : 'btn-outline'}" data-hk="${k}">${ic(HK_ICON[k])}${HK[k]}</button>`).join('')}</div>
+      <p class="mt-2 text-xs text-muted">สถานะ "มีผู้พักแล้ว" เปลี่ยนอัตโนมัติตามการเช็กอิน/เช็กเอาต์</p>
       <div class="mt-4 flex justify-end"><button type="button" class="btn btn-outline" data-no>ปิด</button></div>`);
     $('#modal-body [data-no]').onclick = closeModal;
     $$('#modal-body [data-open]').forEach((x) => x.addEventListener('click', closeModal));
