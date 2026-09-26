@@ -290,17 +290,6 @@
           </div>
         </div>
 
-        <div id="promo-bar" class="mt-4 rounded-2xl border border-dashed border-gold/60 bg-[#FFFBF0] p-3 sm:p-4">
-          <form id="promo-form" class="flex flex-wrap items-center gap-2" novalidate>
-            <label for="promo-input" class="flex items-center gap-2 text-sm font-medium text-gold-deep"><svg class="ic"><use href="#i-ticket-percent"/></svg>มีโค้ดส่วนลด?</label>
-            <div class="flex min-w-[230px] flex-1 gap-2">
-              <input id="promo-input" class="field !min-h-[2.6rem] !py-2 uppercase" maxlength="30" placeholder="เช่น WELCOME10 หรือโค้ดจาก LINE" autocomplete="off" autocapitalize="characters">
-              <button type="submit" class="btn-outline shrink-0 px-4 text-sm">ใช้โค้ด</button>
-            </div>
-          </form>
-          <p id="promo-status" class="mt-2 text-sm" aria-live="polite" hidden></p>
-        </div>
-
         <div id="room-list" class="mt-4 space-y-4" aria-live="polite" aria-busy="true"></div>
       </section>
 
@@ -1045,7 +1034,8 @@
     await loadHotel();
     renderPromo();
   }
-  $('#promo-form').addEventListener('submit', (e) => { e.preventDefault(); applyPromo($('#promo-input').value); });
+  $('#co-promo-btn').addEventListener('click', () => applyPromo($('#co-promo').value));
+  $('#co-promo').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyPromo($('#co-promo').value); } });
 
   /* ---------------- Tabs highlight ---------------- */
   const tabLinks = $$('#tabs .tab');
@@ -1206,8 +1196,6 @@
     box.className = 'mt-2 text-sm ' + (p.valid ? 'text-ok' : 'text-bad');
     box.textContent = p.valid ? `✓ ใช้โค้ด ${p.code} · ${p.label || `ลด ${p.percent}%`}` : `โค้ด ${p.code}: ${p.message || 'ใช้ไม่ได้'}`;
   }
-  $('#co-promo-btn').addEventListener('click', () => applyPromo($('#co-promo').value));
-  $('#co-promo').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyPromo($('#co-promo').value); } });
   $('#sum-toggle').addEventListener('click', () => { const ul = $('#sum-nights'); ul.hidden = !ul.hidden; $('#sum-toggle').setAttribute('aria-expanded', String(!ul.hidden)); });
 
   /* ---------------- Validation ---------------- */
