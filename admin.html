@@ -616,7 +616,7 @@
         <div class="min-w-0 flex-1"><p class="text-sm">${hkBadge(r.hk_status, r.room_number)} <span class="text-xs text-muted">${esc(r.hk_note || '')}</span></p>
         <p class="truncate text-xs ${n && n.check_in === t ? 'font-semibold text-bad' : 'text-muted'}">${occ2 ? 'มีแขกพักอยู่' : n ? `แขกถัดไป ${n.check_in === t ? 'วันนี้' : fmt(n.check_in)} · ${esc(n.full_name)}` : 'ยังไม่มีแขกถัดไป'}</p></div>
         <button class="btn btn-ok btn-sm" data-act="clean" data-id="${esc(r.room_number)}">${ic('check')}พร้อมแล้ว</button></li>`; }).join('')}</ul>`
-      : '<p class="px-4 pb-4 text-sm text-muted">ทุกห้องพร้อมเข้าพัก 🎉</p>';
+      : '<p class="px-4 pb-4 text-sm text-muted inline-flex items-center gap-2">' + ic('sparkles') + 'ทุกห้องพร้อมเข้าพัก</p>';
 
     const acts = (S.activity || []).slice(0, 15);
     $('#dash-activity').innerHTML = acts.length ? acts.map((a) => `<li class="px-4 py-2.5 text-sm"><p><b>${esc(a.staff || 'ระบบ')}</b> · ${esc(actionLabel(a.action))}${a.room_number ? ` · ห้อง ${esc(a.room_number)}` : ''}</p>
@@ -698,7 +698,7 @@
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">${floors[f].map((r) => {
         const occ = occupant(r.room_number), n = nextArrival(r.room_number);
         const line = occ ? `${ic('user', 'inline')} ${esc(occ.full_name)} · ${occ.check_out <= t ? '<b class="text-bad">ออกวันนี้</b>' : 'ถึง ' + fmt(occ.check_out)}`
-          : n ? `${n.check_in === t ? '<b class="text-[#2B5FA8]">⚡ เข้าวันนี้</b>' : 'ว่าง · เข้า ' + fmt(n.check_in)} · ${esc(n.full_name)}` : 'ว่าง';
+          : n ? `${n.check_in === t ? '<b class="text-[#2B5FA8] inline-flex items-center gap-1">' + ic('log-in') + 'เข้าวันนี้</b>' : 'ว่าง · เข้า ' + fmt(n.check_in)} · ${esc(n.full_name)}` : 'ว่าง';
         return `<button type="button" class="room-tile" data-room="${esc(r.room_number)}">
           <div class="flex items-start justify-between gap-2"><span class="font-serif text-2xl font-bold">${esc(r.room_number)}</span>${hkBadge(r.hk_status, r.room_number)}</div>
           <p class="text-xs text-muted">${esc(typeName(r.room_type))}</p>
