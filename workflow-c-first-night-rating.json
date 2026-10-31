@@ -15,7 +15,7 @@
         }
       },
       "id": "93e7c43d-643d-5d56-918d-5c0caa01bb4d",
-      "name": "Every Day 20:00",
+      "name": "ทุกวัน 20:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.3,
       "position": [
@@ -104,7 +104,7 @@
         "options": {}
       },
       "id": "1f399839-b1a9-5bad-bbab-86ff715fd07c",
-      "name": "First Night Guests",
+      "name": "หาแขกคืนแรก",
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.3,
       "position": [
@@ -119,7 +119,7 @@
         "jsCode": "// ===== Build Rating Request (Run Once for Each Item) =====\n// 1 item = แขก 1 คนที่เข้าพักคืนแรกวันนี้ → สร้างข้อความขอคะแนน 1–5 ดาว\n// ปุ่มส่ง postback: action=rate&booking_id=...&score=N (Workflow B เป็นคนรับ)\nconst b = $json;\nconst firstName = String(b.full_name || '').trim().split(/\\s+/)[0] || 'ลูกค้า';\nconst LABEL = { 5: 'ดีมาก', 4: 'ดี', 3: 'พอใช้', 2: 'ไม่ค่อยดี', 1: 'ควรปรับปรุง' };\nconst data = (n) => `action=rate&booking_id=${encodeURIComponent(b.booking_id)}&score=${n}`;\nconst action = (n, label) => ({ type: 'postback', label, data: data(n), displayText: `ให้คะแนน ${n} ดาว` });\n\nconst message = {\n  type: 'flex',\n  altText: 'คืนแรกเป็นอย่างไรบ้างคะ? ให้คะแนนความพึงพอใจ 1–5 ดาว',\n  contents: {\n    type: 'bubble',\n    size: 'kilo',\n    body: {\n      type: 'box', layout: 'vertical', spacing: 'md', paddingAll: '18px',\n      contents: [\n        { type: 'text', text: 'คืนแรกเป็นอย่างไรบ้างคะ 🌙', weight: 'bold', size: 'lg', color: '#16161A', wrap: true },\n        { type: 'text', size: 'sm', color: '#5C5850', wrap: true,\n          text: `สวัสดีค่ะคุณ${firstName}${b.room_number ? ' ห้อง ' + b.room_number : ''}\\nช่วยให้คะแนนความพึงพอใจหน่อยนะคะ ถ้ามีอะไรไม่สะดวก เราจะรีบดูแลทันที` },\n        {\n          type: 'box', layout: 'horizontal', spacing: 'xs', margin: 'md',\n          // ใช้ box ที่กดได้แทน button (button มี padding ในตัว → ตัวเลขโดนตัดเป็น \"...\")\n          contents: [1, 2, 3, 4, 5].map((n) => ({\n            type: 'box', layout: 'vertical', flex: 1, height: '44px', justifyContent: 'center',\n            cornerRadius: 'md', backgroundColor: n >= 4 ? '#B08D3E' : '#EFEAE0',\n            action: action(n, String(n)),\n            contents: [{ type: 'text', text: String(n), align: 'center', weight: 'bold', size: 'lg',\n              color: n >= 4 ? '#FFFFFF' : '#16161A' }],\n          })),\n        },\n        { type: 'text', text: '1 = ควรปรับปรุง · 5 = ดีมาก', size: 'xxs', color: '#8A8578', align: 'center' },\n      ],\n    },\n  },\n  // Quick Reply แสดงเหนือคีย์บอร์ด (หายไปเมื่อมีข้อความใหม่ แต่ปุ่มในการ์ดยังกดได้)\n  quickReply: { items: [5, 4, 3, 2, 1].map((n) => ({ type: 'action', action: action(n, `${n} ⭐ ${LABEL[n]}`) })) },\n};\n\nreturn { json: { booking_id: b.booking_id, push_body: { to: b.line_user_id, messages: [message] } } };\n"
       },
       "id": "48337d67-7924-50e0-88dd-0cca490bed3a",
-      "name": "Build Rating Request",
+      "name": "Build Flex ⭐ ประเมิน",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -148,13 +148,19 @@
         }
       },
       "id": "7e40f595-ebee-5195-bfaf-cc4d73fa65c7",
-      "name": "Send Rating Request",
+      "name": "Push ⭐ ประเมิน",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
         880,
         300
       ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": null,
+          "name": "LINE Channel Token"
+        }
+      },
       "onError": "continueRegularOutput"
     },
     {
@@ -184,7 +190,7 @@
         "options": {}
       },
       "id": "6087c4c7-ef73-59d8-8daf-36158e3c5ae3",
-      "name": "Sent OK?",
+      "name": "ส่งสำเร็จ?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
@@ -210,7 +216,7 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "booking_id": "={{ $('Build Rating Request').item.json.booking_id }}",
+            "booking_id": "={{ $('Build Flex ⭐ ประเมิน').item.json.booking_id }}",
             "rating_sent_at": "={{ $now.setZone('Asia/Bangkok').toISO() }}",
             "last_updated": "={{ $now.setZone('Asia/Bangkok').toISO() }}"
           },
@@ -254,7 +260,7 @@
         }
       },
       "id": "ac0094e6-ac9f-5482-ab17-f8f5897c60f0",
-      "name": "Mark Rating Sent",
+      "name": "Update Bookings · ส่งประเมินแล้ว",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
@@ -264,7 +270,7 @@
     }
   ],
   "connections": {
-    "Every Day 20:00": {
+    "ทุกวัน 20:00": {
       "main": [
         [
           {
@@ -279,51 +285,51 @@
       "main": [
         [
           {
-            "node": "First Night Guests",
+            "node": "หาแขกคืนแรก",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "First Night Guests": {
+    "หาแขกคืนแรก": {
       "main": [
         [
           {
-            "node": "Build Rating Request",
+            "node": "Build Flex ⭐ ประเมิน",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build Rating Request": {
+    "Build Flex ⭐ ประเมิน": {
       "main": [
         [
           {
-            "node": "Send Rating Request",
+            "node": "Push ⭐ ประเมิน",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Rating Request": {
+    "Push ⭐ ประเมิน": {
       "main": [
         [
           {
-            "node": "Sent OK?",
+            "node": "ส่งสำเร็จ?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Sent OK?": {
+    "ส่งสำเร็จ?": {
       "main": [
         [
           {
-            "node": "Mark Rating Sent",
+            "node": "Update Bookings · ส่งประเมินแล้ว",
             "type": "main",
             "index": 0
           }

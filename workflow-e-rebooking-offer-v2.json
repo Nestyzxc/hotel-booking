@@ -15,7 +15,7 @@
         }
       },
       "id": "11944950-d82e-5d62-a196-f4cfffa59d4d",
-      "name": "Every Day 10:00",
+      "name": "ทุกวัน 10:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.3,
       "position": [
@@ -93,7 +93,7 @@
         "options": {}
       },
       "id": "3c0493b5-c9af-5692-89c6-d08ebb97335b",
-      "name": "Is Conversion?",
+      "name": "กลับมาจองแล้ว?",
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.3,
       "position": [
@@ -163,7 +163,7 @@
         }
       },
       "id": "5f0f6f5c-ff97-5288-b9bb-755d84e48c3e",
-      "name": "Mark Converted",
+      "name": "Update Offers · converted",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
@@ -234,7 +234,7 @@
         }
       },
       "id": "312b7d75-a8f3-57d8-a88c-34a2129d8c89",
-      "name": "Send Deal",
+      "name": "Push ดีล",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
@@ -276,7 +276,7 @@
         "options": {}
       },
       "id": "07a894a0-5444-5654-a425-dfc5d0ccb303",
-      "name": "Sent OK?",
+      "name": "ส่งสำเร็จ?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
@@ -436,7 +436,7 @@
         "options": {}
       },
       "id": "update-customer-lastseen",
-      "name": "Update Customer Last Seen",
+      "name": "Update Customers · last_seen",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
@@ -453,7 +453,7 @@
     }
   ],
   "connections": {
-    "Every Day 10:00": {
+    "ทุกวัน 10:00": {
       "main": [
         [
           {
@@ -479,7 +479,7 @@
       "main": [
         [
           {
-            "node": "Is Conversion?",
+            "node": "กลับมาจองแล้ว?",
             "type": "main",
             "index": 0
           },
@@ -491,11 +491,11 @@
         ]
       ]
     },
-    "Is Conversion?": {
+    "กลับมาจองแล้ว?": {
       "main": [
         [
           {
-            "node": "Mark Converted",
+            "node": "Update Offers · converted",
             "type": "main",
             "index": 0
           }
@@ -506,25 +506,25 @@
       "main": [
         [
           {
-            "node": "Send Deal",
+            "node": "Push ดีล",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Deal": {
+    "Push ดีล": {
       "main": [
         [
           {
-            "node": "Sent OK?",
+            "node": "ส่งสำเร็จ?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Sent OK?": {
+    "ส่งสำเร็จ?": {
       "main": [
         [
           {
@@ -540,7 +540,7 @@
       "main": [
         [
           {
-            "node": "Update Customer Last Seen",
+            "node": "Update Customers · last_seen",
             "type": "main",
             "index": 0
           }
