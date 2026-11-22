@@ -127,6 +127,20 @@
       .room-tile { border-color: rgba(197,168,128,.3); } .room-tile:hover { border-color:#D4AF37; }
       .tl > .h.today { background:#F6EBC8; color:#6E5519; }
     }
+    /* ---------- อัปเดตสด (real-time) ---------- */
+    @keyframes live-pulse { 0% { box-shadow: 0 0 0 0 rgba(46,125,79,.55); } 70% { box-shadow: 0 0 0 7px rgba(46,125,79,0); } 100% { box-shadow: 0 0 0 0 rgba(46,125,79,0); } }
+    @keyframes flash-row { from { background-color: #F6EBC8; } to { background-color: transparent; } }
+    @keyframes flash-num { 0% { color: #8E6E24; transform: scale(1.08); } 100% { color: inherit; transform: none; } }
+    .live-pill { display: inline-flex; align-items: center; gap: .4rem; border-radius: 999px; border: 1px solid rgba(197,168,128,.6); background: #fff;
+      padding: .28rem .65rem; font-size: .75rem; font-weight: 600; color: #6B665C; white-space: nowrap; }
+    .live-pill:hover { border-color: #D4AF37; }
+    .live-dot { width: .5rem; height: .5rem; border-radius: 999px; background: #A8A296; flex: none; }
+    .live-pill[data-state="live"] { color: #2E7D4F; }
+    .live-pill[data-state="live"] .live-dot { background: #2E7D4F; animation: live-pulse 2s infinite; }
+    .live-pill[data-state="error"] { color: #B23A2E; border-color: #E7B4AE; }
+    .live-pill[data-state="error"] .live-dot { background: #B23A2E; }
+    .flash { animation: flash-row 4s ease-out; }
+    .kpi .v.flash-num { display: inline-block; animation: flash-num 1.6s ease-out; transform-origin: left center; }
   </style>
 </head>
 
@@ -184,7 +198,9 @@
           <p id="page-sub" class="truncate text-xs text-muted">—</p>
         </div>
         <div class="flex items-center gap-2">
-          <span id="updated-at" class="hidden text-xs text-muted sm:inline"></span>
+          <span id="updated-at" class="hidden text-xs text-muted md:inline"></span>
+          <button id="live-pill" type="button" class="live-pill" data-state="live" aria-live="polite" title="แตะเพื่อหยุด/เริ่มอัปเดตสด">
+            <span class="live-dot" aria-hidden="true"></span><span id="live-text">อัปเดตสด</span></button>
           <button id="refresh-btn" type="button" class="btn btn-outline btn-sm" aria-label="รีเฟรชข้อมูล"><svg class="ic"><use href="#i-refresh-cw"/></svg><span class="hidden sm:inline">รีเฟรช</span></button>
           <button type="button" data-logout class="btn btn-outline btn-sm lg:hidden" aria-label="ออกจากระบบ"><svg class="ic"><use href="#i-log-out"/></svg></button>
         </div>
@@ -339,7 +355,10 @@
            brush-cleaning spray-can wrench calendar-check calendar-x arrow-right-left pencil ban user-x trending-up wallet star
            chart-column gift users house bed ticket-percent info save rotate-ccw log-in */
   const API = N8N_BASE_URL.replace(/\/+$/, '') + '/admin';
-  const REFRESH_MS = 60000, TIMEOUT_MS = 25000;
+  const TIMEOUT_MS = 25000;
+  // อัปเดตสด: ดึงข้อมูลทุก LIVE_MS ตอนที่มีคนใช้หน้าจออยู่ ถ้าไม่มีการขยับเมาส์/แตะจอเกิน IDLE_AFTER_MS จะช้าลงเป็น IDLE_MS
+  // ถ้าเชื่อมต่อไม่ได้ จะเว้นระยะห่างขึ้นเรื่อย ๆ (สูงสุด MAX_BACKOFF_MS) เพื่อไม่ยิง n8n/ngrok รัว ๆ
+  const LIVE_MS = 20000, IDLE_MS = 60000, IDLE_AFTER_MS = 3 * 60000, MAX_BACKOFF_MS = 120000;
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -381,6 +400,7 @@
 
   /* ---------- State ---------- */
   let S = null, view = 'dashboard', drawerId = null, drawerMode = 'view', loadingNow = false, timer = null;
+  const live = { on: store.get('sl_live', localStorage) !== 'off', sig: '', okAt: 0, fails: 0, nextAt: 0, activeAt: Date.now(), fresh: new Set(), kpi: {}, actTop: '' };
   const filt = { q: '', status: '', period: 'upcoming', source: '' };
   const nb = { source: 'Walk-in', type: '' };
   const staff = () => store.get('sl_staff_name', sessionStorage) || store.get('sl_staff_name', localStorage) || 'พนักงาน';
@@ -408,7 +428,7 @@
     : r.status === 0 ? 'เชื่อมต่อ n8n ไม่ได้ (ตรวจว่า n8n และ ngrok เปิดอยู่ และตั้ง Allowed Origins ถูกต้อง)'
     : (r.data && r.data.message) || `เกิดข้อผิดพลาด (HTTP ${r.status})`;
 
-  async function load({ quiet = false } = {}) {
+  async function load({ quiet = false, announce = true } = {}) {
     if (loadingNow) return;
     loadingNow = true;
     $('#refresh-btn').disabled = true;
@@ -416,17 +436,89 @@
     loadingNow = false; $('#refresh-btn').disabled = false;
     if (r.status === 403) { logout('รหัสพนักงานไม่ถูกต้อง หรือถูกเปลี่ยนแล้ว กรุณาเข้าสู่ระบบใหม่'); return false; }
     if (!r.ok || !r.data?.success) {
+      live.fails++;
       $('#conn-warning').hidden = false;
       $('#conn-warning').textContent = connMsg(r) + (S ? ' · แสดงข้อมูลล่าสุดที่โหลดได้' : '');
       if (!quiet) toast(connMsg(r), 'bad');
+      paintLive();
       return false;
     }
+    live.fails = 0; live.okAt = Date.now();
     $('#conn-warning').hidden = true;
-    S = normalize(r.data);
-    $('#updated-at').textContent = 'อัปเดต ' + new Intl.DateTimeFormat('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }).format(new Date());
+    stampUpdated();
+    // ข้อมูลไม่เปลี่ยน → ไม่วาดหน้าใหม่ (หน้าจอไม่กระตุก ตำแหน่งเลื่อน/ฟิลเตอร์ยังอยู่)
+    const sig = snapSig(r.data);
+    if (sig === live.sig && S) { paintLive(); return true; }
+    const prev = S;
+    S = normalize(r.data); live.sig = sig;
+    if (prev) diffSnap(prev, S, announce);
     renderAll();
+    paintLive();
     return true;
   }
+  const snapSig = (d) => JSON.stringify({ ...d, now: undefined });
+  const stampUpdated = () => { $('#updated-at').textContent = 'อัปเดต ' + new Intl.DateTimeFormat('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Bangkok' }).format(new Date()); };
+
+  // เทียบข้อมูลรอบก่อนกับรอบนี้: การจองใหม่ / เปลี่ยนสถานะ / แขกแจ้งเรื่อง → ไฮไลต์แถว + แจ้งเตือน
+  function diffSnap(prev, next, announce) {
+    const old = new Map(prev.bookings.map((b) => [b.booking_id, b]));
+    const added = [], issues = [];
+    for (const b of next.bookings) {
+      const o = old.get(b.booking_id);
+      if (!o) { added.push(b); live.fresh.add(b.booking_id); continue; }
+      if (o.status !== b.status || o.room_number !== b.room_number || o.check_in !== b.check_in || o.check_out !== b.check_out || o.payment_status !== b.payment_status) live.fresh.add(b.booking_id);
+      if (b.status === 'Need Attention' && o.status !== 'Need Attention') issues.push(b);
+    }
+    if (!announce) return;
+    if (added.length === 1) toast(`การจองใหม่: ${added[0].full_name || added[0].booking_id} · ${fmt(added[0].check_in)}–${fmt(added[0].check_out)}`, 'ok');
+    else if (added.length > 1) toast(`มีการจองใหม่ ${added.length} รายการ`, 'ok');
+    for (const b of issues.slice(0, 3)) toast(`แขกแจ้งเรื่อง: ${b.full_name || b.booking_id}${b.room_number ? ' · ห้อง ' + b.room_number : ''}${b.issue_category ? ' · ' + b.issue_category : ''}`, 'bad');
+  }
+  // ไฮไลต์แถวที่เพิ่งเปลี่ยน (ครั้งเดียวหลังวาดหน้า แล้วล้างทิ้ง)
+  function flashFresh() {
+    if (!live.fresh.size) return;
+    $$('[data-open]').forEach((el) => {
+      if (!live.fresh.has(el.dataset.open) || el.closest('#dash-activity, #drawer, dialog')) return;
+      const row = el.closest('li, tr') || el;
+      row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash');
+    });
+    live.fresh.clear();
+  }
+
+  /* ---------- ตัวตั้งเวลาอัปเดตสด ---------- */
+  const liveBusy = () => document.hidden || $('#modal').open || $('#confirm').open || view === 'new' || drawerMode === 'edit';
+  const liveDelay = () => live.fails ? Math.min(LIVE_MS * 2 ** live.fails, MAX_BACKOFF_MS) : (Date.now() - live.activeAt > IDLE_AFTER_MS ? IDLE_MS : LIVE_MS);
+  function schedule(ms = liveDelay()) {
+    clearTimeout(timer);
+    if (!S || !live.on) { live.nextAt = 0; paintLive(); return; }
+    live.nextAt = Date.now() + ms;
+    timer = setTimeout(async () => { if (!liveBusy()) await load({ quiet: true }); schedule(); }, ms);
+    paintLive();
+  }
+  function paintLive() {
+    const pill = $('#live-pill'), txt = $('#live-text'); if (!pill) return;
+    const secs = (t) => Math.max(0, Math.round((t - Date.now()) / 1000));
+    let state = 'live', label;
+    if (!live.on) { state = 'paused'; label = 'หยุดอัปเดตสด'; }
+    else if (live.fails) { state = 'error'; label = live.nextAt ? `ขาดการเชื่อมต่อ · ลองใหม่ใน ${secs(live.nextAt)} วิ` : 'ขาดการเชื่อมต่อ'; }
+    else if (document.hidden || liveBusy()) { state = 'paused'; label = 'พักอัปเดตชั่วคราว'; }
+    else { const a = live.okAt ? Math.round((Date.now() - live.okAt) / 1000) : 0; label = a < 5 ? 'สด · เพิ่งอัปเดต' : a < 60 ? `สด · ${a} วิที่แล้ว` : `สด · ${Math.floor(a / 60)} นาทีที่แล้ว`; }
+    pill.dataset.state = state; txt.textContent = label;
+    pill.setAttribute('aria-pressed', String(live.on));
+  }
+  setInterval(paintLive, 1000);
+  $('#live-pill').addEventListener('click', () => {
+    live.on = !live.on; store.set('sl_live', live.on ? '' : 'off', localStorage);
+    toast(live.on ? 'เปิดอัปเดตสดแล้ว' : 'หยุดอัปเดตสดแล้ว (กดรีเฟรชเองได้)', live.on ? 'ok' : 'warn');
+    if (live.on) { load({ quiet: true }); schedule(); } else schedule();
+  });
+  // นับว่ามีคนใช้งานอยู่ ถ้าเพิ่งกลับมาจากช่วงว่าง ให้ดึงข้อมูลทันที
+  ['pointerdown', 'keydown', 'wheel', 'touchstart', 'mousemove'].forEach((ev) => addEventListener(ev, () => {
+    const wasIdle = Date.now() - live.activeAt > IDLE_AFTER_MS; live.activeAt = Date.now();
+    if (wasIdle && S && live.on && !loadingNow) { load({ quiet: true }); schedule(); }
+  }, { passive: true }));
+  // หลายแท็บ: แท็บหนึ่งบันทึกอะไร แท็บอื่นดึงข้อมูลใหม่ทันที
+  let bc = null; try { bc = new BroadcastChannel('sl-admin'); bc.onmessage = () => { if (S && !liveBusy()) load({ quiet: true }); }; } catch { /* เบราว์เซอร์ไม่รองรับ */ }
   function normalize(d) {
     d.bookings = (d.bookings || []).map((b) => ({ ...b, room_number: String(b.room_number ?? ''), adults: num(b.adults, 1), children: num(b.children),
       price_total: num(b.price_total), discount: num(b.discount), nights: num(b.nights) || Math.max(0, diffDays(b.check_in, b.check_out)) }));
@@ -446,7 +538,8 @@
     toast(okMsg || r.data.message, 'ok');
     if (r.data.warning) toast(r.data.warning, 'warn');
     if (r.data.line_warning) toast(r.data.line_warning, 'warn');
-    await load({ quiet: true });
+    try { bc?.postMessage('changed'); } catch { /* ignore */ }
+    await load({ quiet: true, announce: false });
     return r.data;
   }
 
@@ -464,25 +557,24 @@
     const r = await api('GET');
     btn.disabled = false; btn.querySelector('.spinner').hidden = true;
     if (!r.ok || !r.data?.success) { store.set('sl_staff_key', ''); $('#login-error').textContent = connMsg(r); return; }
-    S = normalize(r.data);
+    live.sig = snapSig(r.data); S = normalize(r.data);
     enterApp();
   });
   function enterApp() {
     $('#login-view').hidden = true; $('#app-view').hidden = false;
     $('#side-staff').textContent = staff();
-    $('#updated-at').textContent = 'อัปเดต ' + new Intl.DateTimeFormat('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }).format(new Date());
+    stampUpdated(); live.okAt = Date.now(); live.fails = 0;
     go(location.hash.slice(1) || 'dashboard', false);
     renderAll();
-    clearInterval(timer);
-    timer = setInterval(() => { if (!document.hidden && !$('#modal').open && !$('#confirm').open && view !== 'new') load({ quiet: true }); }, REFRESH_MS);
+    schedule();
   }
   function logout(msg = '') {
-    clearInterval(timer); store.set('sl_staff_key', ''); S = null; closeDrawer();
+    clearTimeout(timer); store.set('sl_staff_key', ''); S = null; live.sig = ''; live.kpi = {}; live.actTop = ''; closeDrawer();
     $('#app-view').hidden = true; $('#login-view').hidden = false; $('#staff-key').value = '';
     $('#login-error').textContent = msg;
   }
   $$('[data-logout]').forEach((b) => b.addEventListener('click', () => logout()));
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && S && drawerMode !== 'edit') load({ quiet: true }); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && S && drawerMode !== 'edit') { live.activeAt = Date.now(); load({ quiet: true }); schedule(); } else paintLive(); });
   $('#refresh-btn').addEventListener('click', () => load());
 
   /* =========================================================
@@ -559,6 +651,7 @@
     $$('[data-count="dirty"]').forEach((el) => { el.hidden = !L.dirty.length; el.textContent = L.dirty.length; });
     renderView();
     if (drawerId && drawerMode === 'view') renderDrawer();
+    flashFresh();
   }
   function renderView() {
     ({ dashboard: renderDashboard, bookings: renderBookings, rooms: renderRooms, customers: renderCustomers, new: renderNew, settings: renderSettings })[view]();
@@ -580,8 +673,10 @@
     const directPct = recent.length ? Math.round(((recent.length - ota) / recent.length) * 100) : 0;
     const offers = (S.offers || []).filter((o) => String(o.sent_at).slice(0, 10) >= since30);
     const conv = offers.filter((o) => o.converted_booking_id).length;
-    const k = (icon, label, value, sub, tone = '') => `<div class="card kpi"><p class="flex items-center gap-1.5 text-xs text-muted">${ic(icon, tone)}${label}</p>
-      <p class="v mt-1">${value}</p><p class="mt-0.5 text-xs text-muted">${sub}</p></div>`;
+    const k = (icon, label, value, sub, tone = '') => {
+      const changed = label in live.kpi && live.kpi[label] !== String(value); live.kpi[label] = String(value);
+      return `<div class="card kpi"><p class="flex items-center gap-1.5 text-xs text-muted">${ic(icon, tone)}${label}</p>
+      <p class="mt-1"><span class="v${changed ? ' flash-num' : ''}">${value}</span></p><p class="mt-0.5 text-xs text-muted">${sub}</p></div>`; };
     $('#kpis').innerHTML = [
       k('log-in', 'เข้าพักวันนี้', L.arrivals.length, `เช็กเอาต์วันนี้ ${L.departures.length}`, 'text-[#2B5FA8]'),
       k('house', 'กำลังเข้าพัก', L.inhouse.length, `คืนนี้เต็ม ${occ}% (${tonight}/${sellable} ห้อง)`, 'text-ok'),
@@ -618,7 +713,11 @@
       : '<p class="px-4 pb-4 text-sm text-muted inline-flex items-center gap-2">' + ic('sparkles') + 'ทุกห้องพร้อมเข้าพัก</p>';
 
     const acts = (S.activity || []).slice(0, 15);
-    $('#dash-activity').innerHTML = acts.length ? acts.map((a) => `<li class="px-4 py-2.5 text-sm"><p><b>${esc(a.staff || 'ระบบ')}</b> · ${esc(actionLabel(a.action))}${a.room_number ? ` · ห้อง ${esc(a.room_number)}` : ''}</p>
+    const actKey = (a) => `${a.timestamp}|${a.action}|${a.booking_id || a.room_number || ''}`;
+    const seenTop = live.actTop, newActs = new Set();
+    if (seenTop) for (const a of acts) { if (actKey(a) === seenTop) break; newActs.add(a); }
+    live.actTop = acts[0] ? actKey(acts[0]) : seenTop;
+    $('#dash-activity').innerHTML = acts.length ? acts.map((a) => `<li class="px-4 py-2.5 text-sm${newActs.has(a) ? ' flash' : ''}"><p><b>${esc(a.staff || 'ระบบ')}</b> · ${esc(actionLabel(a.action))}${a.room_number ? ` · ห้อง ${esc(a.room_number)}` : ''}</p>
       <p class="text-xs text-muted">${esc(a.detail || '')}${a.booking_id ? ` · <button class="underline" data-open="${esc(a.booking_id)}">${esc(a.booking_id)}</button>` : ''} · ${esc(ago(a.timestamp))}</p></li>`).join('')
       : '<li class="px-4 pb-4 text-sm text-muted">ยังไม่มีกิจกรรม</li>';
   }
@@ -1149,7 +1248,7 @@
   (async () => {
     if (store.get('sl_staff_key')) {
       const r = await api('GET');
-      if (r.ok && r.data?.success) { S = normalize(r.data); enterApp(); return; }
+      if (r.ok && r.data?.success) { live.sig = snapSig(r.data); S = normalize(r.data); enterApp(); return; }
       if (r.status === 403) store.set('sl_staff_key', '');
       $('#login-error').textContent = r.status === 403 ? '' : connMsg(r);
     }
