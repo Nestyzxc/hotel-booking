@@ -1,0 +1,21 @@
+{
+  "destination": "Ubot",
+  "events": [
+    {
+      "mode": "active",
+      "timestamp": 0,
+      "replyToken": "00000000000000000000000000000000",
+      "source": {
+        "type": "user",
+        "userId": "ใส่_Your_user_ID"
+      },
+      "type": "message",
+      "message": {
+        "id": "0",
+        "type": "text",
+        "quoteToken": "x",
+        "text": "มีที่จอดรถไหมคะ แล้วเช็กอินได้กี่โมง"
+      }
+    }
+  ]
+}
