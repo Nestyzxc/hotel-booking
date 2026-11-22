@@ -476,6 +476,21 @@ docker compose up -d
 2. ทำความสะอาด + กด "Cleaning Done" ใน LINE
 3. ระบบอัปเดตสถานะห้องอัตโนมัติ
 
+### 🧪 การทดสอบอัตโนมัติ (สำหรับนักพัฒนา)
+ต้องมี Node.js 20 ขึ้นไป
+
+```bash
+npm install
+npx playwright install chromium   # ครั้งแรกครั้งเดียว
+npm test                          # รันทั้งหมด
+npm run test:workflows            # ตรวจไฟล์ workflow-*.json ของ n8n
+npm run test:e2e                  # เปิด index.html / admin.html ด้วย Playwright
+```
+
+- `tests/workflows.test.js` ตรวจว่าไฟล์ workflow parse ได้, ทุก node มีฟิลด์ครบ, ชื่อไม่ซ้ำ, connections ชี้ไป node ที่มีจริง, มี trigger และไม่มี token ฝังในไฟล์
+- `tests/e2e/` เปิดหน้าเว็บจริงในเบราว์เซอร์ (desktop + มือถือ) โดยปลอม LINE LIFF และ n8n API จึงไม่ต้องเปิด n8n/ngrok
+- GitHub Actions (`.github/workflows/tests.yml`) รันชุดนี้ทุกครั้งที่ push เข้า `main` และทุก Pull Request
+
 ---
 
 ## 13. Roadmap

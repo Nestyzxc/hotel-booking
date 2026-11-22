@@ -855,8 +855,9 @@
   }
 
   function renderPromo() {
-    const box = $('#promo-status'), p = state.promo;
-    $('#promo-input').value = state.promoCode || '';
+    const box = $('#promo-status'), input = $('#promo-input'), p = state.promo;
+    if (!box || !input) return;   // ช่องโค้ดหน้าแรกถูกถอดออกแล้ว โค้ดใช้ที่หน้า checkout (renderCoPromo)
+    input.value = state.promoCode || '';
     if (!p) { box.hidden = true; return; }
     box.hidden = false;
     box.className = 'mt-2 text-sm ' + (p.valid ? 'text-ok' : 'text-bad');

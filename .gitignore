@@ -25,3 +25,7 @@ Thumbs.db
 ~$.*
 ~*.tmp
 *.lock
+
+# ============ Test output ============
+test-results/
+playwright-report/
