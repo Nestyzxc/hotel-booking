@@ -4,15 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-  <!-- ================================================================
-       CONFIG — แก้ 3 ค่านี้ก่อนอัปโหลด (ทั้งหมดเป็นค่าสาธารณะ ไม่มีค่าลับ)
-       ห้ามใส่ Channel Access Token / Channel Secret / API key / Staff Key ในไฟล์นี้
-       รูปภาพ ข้อมูลโรงแรม ราคา และห้องพัก แก้ใน Google Sheets (ชีต Config / RoomTypes) ไม่ต้องแก้ไฟล์นี้
-       ================================================================ -->
+  <!-- CONFIG: URL ของ n8n, LIFF_ID และ LINE_OA_BASIC_ID อยู่ใน config.js (ใช้ร่วมกับ admin.html)
+       รูปภาพ ข้อมูลโรงแรม ราคา และห้องพัก แก้ใน Google Sheets (ชีต Config / RoomTypes) ไม่ต้องแก้ไฟล์นี้ -->
+  <script src="config.js"></script>
   <script>
-    const N8N_BASE_URL     = 'https://gently-condition-lumpiness.ngrok-free.dev/webhook'; // ไม่ต้องมี / ปิดท้าย
-    const LIFF_ID          = '2011748537-D4uPXJ9B';   // LINE Login channel > แท็บ LIFF > LIFF ID
-    const LINE_OA_BASIC_ID = '@416hldvs';    // OA Manager > Basic ID เช่น @123abcde
+    const { N8N_BASE_URL = 'YOUR_N8N_BASE_URL', LIFF_ID = 'YOUR_LIFF_ID', LINE_OA_BASIC_ID = 'YOUR_LINE_OA_BASIC_ID' } = window.SAI_LAN_CONFIG || {};
   </script>
 
   <title>Sai Lan Hotel · จองห้องพักตรงกับโรงแรม</title>
@@ -1177,7 +1173,7 @@
       $('#co-open-line').href = liffUrl(writeUrlState(new URL(location.href), true).searchParams.toString());
       form.hidden = true; lockSubmit(true);
     } else {
-      const msg = state.liff === 'unconfigured' ? 'ยังไม่ได้ตั้งค่า LIFF_ID ที่ด้านบนไฟล์ index.html จึงยังจองไม่ได้ (ดูห้องและราคาได้ตามปกติ)'
+      const msg = state.liff === 'unconfigured' ? 'ยังไม่ได้ตั้งค่า LIFF_ID ในไฟล์ config.js จึงยังจองไม่ได้ (ดูห้องและราคาได้ตามปกติ)'
         : state.liff === 'loading' || state.liff === 'redirecting' ? 'กำลังเชื่อมต่อ LINE…' : (state.liffError || 'เชื่อมต่อ LINE ไม่สำเร็จ');
       box.innerHTML = `<div class="flex items-start gap-3 text-sm">${state.liff === 'loading' ? '<span class="spinner mt-0.5 text-gold-deep"></span>' : ic('triangle-alert', 'mt-0.5 text-bad')}
         <div><p class="font-medium">${esc(msg)}</p>${state.liff === 'error' ? '<button type="button" onclick="location.reload()" class="mt-2 text-gold-deep underline">ลองใหม่</button>' : ''}</div></div>`;

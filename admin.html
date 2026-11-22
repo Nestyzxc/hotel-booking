@@ -5,12 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
 
-  <!-- ================================================================
-       CONFIG — แก้ค่าเดียว (URL สาธารณะของ n8n) ก่อนอัปโหลด
-       ไฟล์นี้ไม่มีรหัสใด ๆ: พนักงานกรอก "รหัสพนักงาน" (ค่าใน Credential "Staff Key" ของ n8n) ตอนเข้าสู่ระบบ
-       ================================================================ -->
+  <!-- CONFIG: URL ของ n8n อยู่ใน config.js (ใช้ร่วมกับ index.html)
+       ไฟล์นี้ไม่มีรหัสใด ๆ: พนักงานกรอก "รหัสพนักงาน" (ค่าใน Credential "Staff Key" ของ n8n) ตอนเข้าสู่ระบบ -->
+  <script src="config.js"></script>
   <script>
-    const N8N_BASE_URL = 'https://gently-condition-lumpiness.ngrok-free.dev/webhook'; // ไม่ต้องมี / ปิดท้าย
+    const { N8N_BASE_URL = 'YOUR_N8N_BASE_URL' } = window.SAI_LAN_CONFIG || {};
   </script>
 
   <title>Sai Lan Hotel · ระบบหลังบ้าน</title>

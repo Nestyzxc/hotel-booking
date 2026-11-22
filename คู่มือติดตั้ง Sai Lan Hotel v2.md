@@ -25,6 +25,8 @@ v2 มี workflow ใหม่ 3 ตัว (Q, S, F) และแทนขอ�
 | workflow-c-first-night-rating.json, workflow-d-preference-summary.json | คะแนนคืนแรก 20:00 และสรุปความชอบด้วย Gemini | ใช้ต่อ ไม่ต้องแก้ |
 | index.html | หน้าจองแบบ Agoda/Booking: รูป ห้องว่าง ราคา โค้ดส่วนลด ขั้นตอนยืนยัน | แทนของเดิม |
 | admin.html | ระบบหลังบ้านพนักงาน: ภาพรวมวันนี้ การจอง ห้องพัก/แม่บ้าน บันทึกการจอง ตั้งค่า | ใหม่ |
+| config.js | ค่าตั้งค่าของหน้าเว็บที่ใช้ร่วมกัน: N8N\_BASE\_URL, LIFF\_ID, LINE\_OA\_BASIC\_ID | ใหม่ |
+| .env.example | ตัวอย่างไฟล์ .env สำหรับ docker-compose (NGROK\_DOMAIN, NGROK\_AUTHTOKEN) | ใหม่ |
 | sai-lan-sheets-v2.xlsx | ชีตใหม่ 4 ชีต + หัวคอลัมน์ Bookings ใหม่ + แถว Config ใหม่ | ใหม่ |
 | flex-samples-v2.json | ข้อความ Flex จริงจากระบบ 8 แบบ สำหรับ LINE Flex Message Simulator หรือทำสไลด์ | แทน flex-\*.json เดิม |
 
@@ -109,11 +111,11 @@ Workflow v2 อ้าง credential ด้วยชื่อ ถ้าชื่�
 
 ## ขั้นที่ 5 · อัปโหลดหน้าเว็บ
 
-ทั้งสองไฟล์ไม่มีค่าลับ แก้ค่าบนสุดของไฟล์แล้วอัปโหลดทับของเดิมใน repo GitHub Pages
+ไฟล์หน้าเว็บไม่มีค่าลับ ค่าตั้งค่าทั้งหมดอยู่ใน config.js ไฟล์เดียว (index.html และ admin.html อ่านจากไฟล์นี้ ไม่ต้องแก้ไฟล์ HTML)
 
-1. index.html: N8N\_BASE\_URL = https://โดเมน-ngrok/webhook (ไม่มี / ปิดท้าย) แทน N8N\_WEBHOOK\_URL เดิมที่ลงท้าย /booking แล้วใส่ LIFF\_ID กับ LINE\_OA\_BASIC\_ID ค่าเดิม
-2. admin.html: แก้ N8N\_BASE\_URL ค่าเดียว
-3. อัปโหลดทั้งสองไฟล์ไป repo เดิม → Commit → รอ 1–2 นาที LIFF Endpoint URL ใช้ค่าเดิม
+1. config.js: N8N\_BASE\_URL = https://โดเมน-ngrok/webhook (ไม่มี / ปิดท้าย ต้องตรงกับ NGROK\_DOMAIN ใน .env) แทน N8N\_WEBHOOK\_URL เดิมที่ลงท้าย /booking แล้วใส่ LIFF\_ID กับ LINE\_OA\_BASIC\_ID ค่าเดิม
+2. admin.html ใช้ N8N\_BASE\_URL ตัวเดียวกันจาก config.js อัตโนมัติ
+3. อัปโหลด index.html, admin.html และ config.js ไป repo เดิม (ต้องอยู่โฟลเดอร์เดียวกัน) → Commit → รอ 1–2 นาที LIFF Endpoint URL ใช้ค่าเดิม
 4. หน้าหลังบ้านเปิดที่ https://ชื่อผู้ใช้.github.io/ชื่อ-repo/admin.html เข้าด้วยชื่อพนักงาน + รหัส Staff Key (ระบบลืมรหัสเมื่อปิดแท็บ)
 5. ดูหน้าตาหน้าจองโดยไม่ต้องเปิด n8n: เปิด index.html?preview=1 (ข้อมูลตัวอย่าง ไม่บันทึกจริง)
 
