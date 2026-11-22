@@ -18,6 +18,26 @@ test.describe('index.html (หน้าจองห้องพัก)', () => {
     expectNoPageErrors(errors);
   });
 
+  test('รูปตัวอย่าง (demo-images.js) แสดงในแกลเลอรีและการ์ดห้องพักทุกห้อง', async ({ page }) => {
+    const errors = await preparePage(page);
+    // ไม่โหลดรูปจริงจาก Unsplash ในเทสต์ ตอบเป็น PNG 1x1 แทน
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+    await page.route('https://images.unsplash.com/**', (route) => route.fulfill({ contentType: 'image/png', body: png }));
+    await page.goto('/index.html?preview=1');
+
+    await expect(page.locator('#room-list')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('#gallery .g-item img')).toHaveCount(5);
+    await expect(page.locator('#gallery .ph')).toHaveCount(0);
+    const rooms = page.locator('#room-list article.room');
+    const n = await rooms.count();
+    expect(n).toBeGreaterThan(0);
+    for (let i = 0; i < n; i++) {
+      await expect(rooms.nth(i).locator('.room-media img').first()).toHaveAttribute('src', /images\.unsplash\.com/);
+    }
+
+    expectNoPageErrors(errors);
+  });
+
   test('โหมด preview: เลือกห้องแล้วใส่โค้ดส่วนลดที่หน้า checkout ได้', async ({ page }) => {
     const errors = await preparePage(page);
     await page.goto('/index.html?preview=1');
