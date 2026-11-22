@@ -1,0 +1,15 @@
+{
+  "name": "sai-lan-hotel-v2",
+  "private": true,
+  "description": "Automated checks for Sai Lan Hotel v2 (n8n workflows + static pages)",
+  "scripts": {
+    "test": "npm run test:workflows && npm run test:e2e",
+    "test:workflows": "node --test tests/workflows.test.js",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/browser": "4.1.13",
+    "three": "0.170.0"
+  }
+}
