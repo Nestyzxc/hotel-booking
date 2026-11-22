@@ -171,6 +171,7 @@
 | **F** | Daily Ops | Cron 09:00 | - | - | Welcome แขก + Digest แม่บ้าน |
 | **S** | Staff API | Webhook GET/POST | Staff Key | พนักงาน | เช็กอิน/เอาต์, แก้ห้อง, ส่ง push |
 | **G** | AI Concierge | Webhook POST | none (CORS) | แขก (LINE + เว็บ) | 🤖 แชทบอท Gemini ตอบคำถามจากข้อมูลในชีต · [คู่มือ](คู่มือติดตั้ง%20AI%20Chatbot.md) |
+| **R** | Monthly Report PDF *(v2.1)* | Cron วันที่ 1 08:00 + Webhook GET | Staff Key | เจ้าของ | สรุปเดือนที่แล้วเป็น PDF → อีเมล + สรุปสั้นทาง LINE ([คู่มือ](คู่มือติดตั้ง%20รายงานรายเดือน%20(Workflow%20R).md)) |
 
 ---
 
@@ -437,6 +438,7 @@ docker compose up -d
 #    - workflow-e-rebooking-offer-v2.json
 #    - workflow-f-daily-operations.json
 #    - workflow-s-staff-api.json
+#    - workflow-r-monthly-report.json  (v2.1 · ต้องมี service gotenberg ใน docker-compose)
 
 # 4. สร้าง Credentials ใน n8n (ชื่อต้องตรงทุกตัวอักษร ดูคู่มือขั้นที่ 2)
 #    - Google Sheets SA     (Google Service Account API)
@@ -515,10 +517,10 @@ npm run test:e2e                  # เปิด index.html / admin.html ด้�
 ### 🔜 v2.1 (Q4 2026)
 - รองรับ Messenger / Telegram (ขยายช่องทาง)
 - ✅ Dashboard real-time ใน admin.html (อัปเดตสดทุก 20 วินาที ไม่ต้องรีโหลด)
-- ส่งออกรายงาน PDF รายเดือน
+- ✅ ส่งออกรายงาน PDF รายเดือน (Workflow R + Gotenberg)
 
 ### 🔮 v3.0 (2027)
-- เพิ่ม LLM จุดที่ 2: Auto-reply LINE (Gemini ตอบแชทแทนบอท FAQ)
+- ✅ เพิ่ม LLM จุดที่ 2: Auto-reply LINE (Gemini ตอบแชทแทนบอท FAQ) → ทำแล้วเป็น Workflow G
 - Voice-to-text สำหรับแม่บ้านรายงานสถานะห้อง
 - Predictive pricing (AI แนะนำราคาตามฤดูกาล)
 

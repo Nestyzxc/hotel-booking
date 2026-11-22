@@ -26,5 +26,13 @@ services:
     depends_on:
       - n8n
 
+  # แปลงหน้า HTML เป็น PDF ให้ Workflow R (รายงานรายเดือน) · ฟรี ไม่ต้องมี API key
+  # ไม่เปิด port ออกนอกเครื่อง n8n เรียกผ่านเครือข่ายภายในที่ http://gotenberg:3000
+  # มีฟอนต์ไทย (Noto Sans Thai) มาในตัวแล้ว
+  gotenberg:
+    image: gotenberg/gotenberg:8.40.0
+    restart: unless-stopped
+    command: gotenberg --api-timeout=60s --chromium-auto-start --libreoffice-disable-routes
+
 volumes:
   n8n_data:
