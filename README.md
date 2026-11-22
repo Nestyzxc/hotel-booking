@@ -131,12 +131,13 @@
 │  Frontend (Static site)                                          │
 │  • index.html    → หน้าจอง + ดูห้อง                              │
 │  • admin.html    → หลังบ้านพนักงาน (Staff Key)                  │
-│  • ทั้งคู่ฝากบน GitHub Pages (free)                             │
+│  • config.js     → URL ของ n8n + LIFF ID (ใช้ร่วมกันทั้งสองหน้า) │
+│  • ทั้งหมดฝากบน GitHub Pages (free)                             │
 └────────────────────────┬────────────────────────────────────────┘
-                         │ HTTPS
+                         │ HTTPS (https://<NGROK_DOMAIN>/webhook/...)
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  n8n Cloud (free tier, 1 instance)                              │
+│  ngrok (โดเมนคงที่ฟรี) → n8n self-hosted ใน Docker (docker-compose) │
 │  ┌────────────┬────────────┬────────────┬────────────┐          │
 │  │ Q: Hotel   │ A: Booking │ B: LINE    │ S: Staff   │ Webhook   │
 │  │ API        │ v2         │ Router v2  │ API        │          │
@@ -169,6 +170,8 @@
 | **E** | Re-booking | Cron 10:00 | - | - | ส่งข้อเสนอส่วนตัว (ใช้ tags จาก D) |
 | **F** | Daily Ops | Cron 09:00 | - | - | Welcome แขก + Digest แม่บ้าน |
 | **S** | Staff API | Webhook GET/POST | Staff Key | พนักงาน | เช็กอิน/เอาต์, แก้ห้อง, ส่ง push |
+| **G** | AI Concierge | Webhook POST | none (CORS) | แขก (LINE + เว็บ) | 🤖 แชทบอท Gemini ตอบคำถามจากข้อมูลในชีต · [คู่มือ](คู่มือติดตั้ง%20AI%20Chatbot.md) |
+| **R** | Monthly Report PDF *(v2.1)* | Cron วันที่ 1 08:00 + Webhook GET | Staff Key | เจ้าของ | สรุปเดือนที่แล้วเป็น PDF → อีเมล + สรุปสั้นทาง LINE ([คู่มือ](คู่มือติดตั้ง%20รายงานรายเดือน%20(Workflow%20R).md)) |
 
 ---
 
@@ -365,6 +368,16 @@
 | **Output ใช้ที่ไหน** | เก็บใน Sheets → Workflow E อ่านไปทำดีลส่วนตัว |
 | **ค่าใช้จ่าย** | ~0 บาท (Free tier) |
 
+### 🤖 จุดที่ 2 — Workflow G: AI Chatbot (น้องใส)
+
+แขกพิมพ์คำถามอิสระใน LINE OA หรือในหน้าเว็บ (ปุ่ม "ถามน้องใส") → G อ่านชีต Config · RoomTypes · Rooms · FAQ ล่าสุด → แนบเป็น "คลังความรู้" ให้ Gemini → ตอบเป็น JSON `{answer, handoff}`
+
+- ตอบจากข้อมูลในชีตเท่านั้น ไม่มีข้อมูล = บอกว่าไม่ทราบ + ส่งต่อพนักงาน (แจ้งกลุ่มพนักงานใน LINE)
+- ไม่ส่งรหัส WiFi / ข้อมูลแขกคนอื่นให้ AI · โควตาเต็มมีข้อความสำรอง
+- ปุ่มเมนู LINE เดิมยังตอบแบบกฎตายตัวเหมือนเดิม
+
+ดูวิธีติดตั้งที่ [คู่มือติดตั้ง AI Chatbot](คู่มือติดตั้ง%20AI%20Chatbot.md)
+
 ---
 
 ## 10. ฐานข้อมูล Google Sheets
@@ -381,6 +394,7 @@
 | 6 | **Messages** | B, D | ทุกข้อความ LINE ที่เข้า-ออก |
 | 7 | **Offers** | E | ดีลส่วนตัวที่ส่ง (status: pending/claimed/expired) |
 | 8 | **ActivityLog** | A, B, F, S | Audit log ทุก action |
+| 9 | **FAQ** | G | คำถามที่พบบ่อยที่พนักงานเขียนเอง (question, answer, category, active) ให้ AI ใช้ตอบ |
 
 ### หลักการ
 - พนักงานเปิด Sheets แก้ไขได้ทันที
@@ -392,10 +406,13 @@
 
 ## 11. การติดตั้ง
 
+ระบบรัน n8n แบบ **self-hosted ด้วย Docker** บนเครื่องของเราเอง แล้วใช้ **ngrok** เปิดให้หน้าเว็บและ LINE เรียก webhook จากอินเทอร์เน็ตได้ (ไม่ได้ใช้ n8n Cloud) ขั้นตอนละเอียดทีละคลิกอยู่ใน [คู่มือติดตั้ง Sai Lan Hotel v2.md](คู่มือติดตั้ง%20Sai%20Lan%20Hotel%20v2.md)
+
 ### Prerequisites
-- บัญชี n8n Cloud (free) หรือ self-hosted
-- บัญชี Google Workspace + Sheets 1 ไฟล์
-- LINE Official Account + Messaging API
+- Docker Desktop (หรือ Docker Engine + Compose v2)
+- บัญชี ngrok (free) พร้อม Authtoken และโดเมนคงที่ 1 โดเมน (Dashboard → Domains)
+- Google Sheets 1 ไฟล์ + Google Service Account
+- LINE Official Account + Messaging API และ LINE Login channel (สำหรับ LIFF)
 - Gemini API Key (free tier)
 - GitHub Pages (free) สำหรับ frontend
 
@@ -403,49 +420,56 @@
 
 ```bash
 # 1. Clone repo
-git clone https://github.com/yourname/sai-lan-hotel-v2.git
-cd sai-lan-hotel-v2
+git clone https://github.com/Nestyzxc/hotel-booking.git
+cd hotel-booking
 
-# 2. Import 8 workflows เข้า n8n
-#    (File → Import from file)
+# 2. ตั้งค่า ngrok แล้วเปิด n8n + ngrok
+cp .env.example .env        # แล้วใส่ NGROK_DOMAIN และ NGROK_AUTHTOKEN
+docker compose up -d
+#    n8n บนเครื่อง:   http://localhost:5678
+#    n8n จากภายนอก:  https://<NGROK_DOMAIN>/
+
+# 3. Import 8 workflows เข้า n8n (Workflows → Import from file)
 #    - workflow-q-hotel-api.json
 #    - workflow-a-booking-v2.json
 #    - workflow-b-line-router-v2.json
-#    - workflow-c-rating.json
-#    - workflow-d-ai-summary.json
-#    - workflow-e-rebooking.json
-#    - workflow-f-daily-ops.json
+#    - workflow-c-first-night-rating.json
+#    - workflow-d-preference-summary.json
+#    - workflow-e-rebooking-offer-v2.json
+#    - workflow-f-daily-operations.json
 #    - workflow-s-staff-api.json
+#    - workflow-r-monthly-report.json  (v2.1 · ต้องมี service gotenberg ใน docker-compose)
 
-# 3. ตั้งค่า Credentials ใน n8n
-#    - Google Sheets OAuth2
-#    - LINE Channel Access Token
-#    - LINE Channel Secret
-#    - Gemini API Key
+# 4. สร้าง Credentials ใน n8n (ชื่อต้องตรงทุกตัวอักษร ดูคู่มือขั้นที่ 2)
+#    - Google Sheets SA     (Google Service Account API)
+#    - LINE Channel Token   (Header Auth)
+#    - Staff Key            (Header Auth, Name = X-Staff-Key)
+#    - Google Gemini API    (สร้างแล้วเลือกเองใน node "Gemini Flash" ของ Workflow D)
 
-# 4. สร้าง Google Sheets ตาม schema (ดู sheet-schema.md)
-
-# 5. Deploy frontend ขึ้น GitHub Pages
-#    - index.html (หน้าจอง)
-#    - admin.html (หลังบ้าน)
+# 5. แก้ config.js ไฟล์เดียว แล้ว push ขึ้น GitHub Pages
+#    - N8N_BASE_URL     = https://<NGROK_DOMAIN>/webhook
+#    - LIFF_ID          = LIFF ID จาก LINE Login channel
+#    - LINE_OA_BASIC_ID = Basic ID ของ OA เช่น @123abcde
+#    (index.html และ admin.html อ่านค่าจาก config.js ไม่ต้องแก้ไฟล์ HTML)
 ```
 
-### Environment Variables ที่ต้องตั้ง
-```env
-STAFF_KEY=<random-secret>
-LINE_CHANNEL_ACCESS_TOKEN=...
-LINE_CHANNEL_SECRET=...
-GEMINI_API_KEY=...
-SHEET_ID=...
-TIMEZONE=Asia/Bangkok
-```
+### ค่าตั้งค่าอยู่ที่ไหน
+
+| ค่า | อยู่ที่ | ลับไหม |
+|---|---|---|
+| `NGROK_DOMAIN`, `NGROK_AUTHTOKEN` | `.env` (อ่านโดย `docker-compose.yml`, ไม่ commit) | Authtoken เป็นค่าลับ |
+| `N8N_BASE_URL`, `LIFF_ID`, `LINE_OA_BASIC_ID` | `config.js` | ไม่ลับ (เบราว์เซอร์เห็นอยู่แล้ว) |
+| LINE Channel Access Token, Staff Key, Gemini API Key, Service Account | Credentials ใน n8n | ลับ ห้ามใส่ในไฟล์ใน repo |
+| ข้อมูลโรงแรม ราคา ห้อง รูป, `housekeeping_group_id` | Google Sheets (ชีต Config / RoomTypes) | ไม่ลับ |
+
+> ถ้าเปลี่ยนโดเมน ngrok ต้องแก้ 3 ที่ให้ตรงกัน: `NGROK_DOMAIN` ใน `.env`, `N8N_BASE_URL` ใน `config.js` และ Webhook URL ใน LINE Developers
 
 ---
 
 ## 12. การใช้งาน
 
 ### 👤 สำหรับแขก
-1. เปิด https://yourname.github.io/sai-lan-hotel-v2/
+1. เปิด https://nestyzxc.github.io/hotel-booking/
 2. ดูห้องว่าง + ราคา
 3. กรอกฟอร์ม + ยืนยัน LINE
 4. ได้รับ Flex ยืนยันการจองทันที
@@ -454,7 +478,7 @@ TIMEZONE=Asia/Bangkok
 7. รอดีลส่วนตัวครั้งหน้า
 
 ### 👨‍💼 สำหรับพนักงาน
-1. เปิด https://yourname.github.io/sai-lan-hotel-v2/admin.html
+1. เปิด https://nestyzxc.github.io/hotel-booking/admin.html
 2. ใส่ Staff Key
 3. ดู snapshot: ห้องว่าง, booking วันนี้, สถานะ housekeeping
 4. กดปุ่มเช็กอิน/เอาต์
@@ -465,6 +489,21 @@ TIMEZONE=Asia/Bangkok
 1. รับแจ้งเตือนจาก LINE ทุกเช้า 09:00 (Digest)
 2. ทำความสะอาด + กด "Cleaning Done" ใน LINE
 3. ระบบอัปเดตสถานะห้องอัตโนมัติ
+
+### 🧪 การทดสอบอัตโนมัติ (สำหรับนักพัฒนา)
+ต้องมี Node.js 20 ขึ้นไป
+
+```bash
+npm install
+npx playwright install chromium   # ครั้งแรกครั้งเดียว
+npm test                          # รันทั้งหมด
+npm run test:workflows            # ตรวจไฟล์ workflow-*.json ของ n8n
+npm run test:e2e                  # เปิด index.html / admin.html ด้วย Playwright
+```
+
+- `tests/workflows.test.js` ตรวจว่าไฟล์ workflow parse ได้, ทุก node มีฟิลด์ครบ, ชื่อไม่ซ้ำ, connections ชี้ไป node ที่มีจริง, มี trigger และไม่มี token ฝังในไฟล์
+- `tests/e2e/` เปิดหน้าเว็บจริงในเบราว์เซอร์ (desktop + มือถือ) โดยปลอม LINE LIFF และ n8n API จึงไม่ต้องเปิด n8n/ngrok
+- GitHub Actions (`.github/workflows/tests.yml`) รันชุดนี้ทุกครั้งที่ push เข้า `main` และทุก Pull Request
 
 ---
 
@@ -477,11 +516,11 @@ TIMEZONE=Asia/Bangkok
 
 ### 🔜 v2.1 (Q4 2026)
 - รองรับ Messenger / Telegram (ขยายช่องทาง)
-- Dashboard real-time ใน admin.html
-- ส่งออกรายงาน PDF รายเดือน
+- ✅ Dashboard real-time ใน admin.html (อัปเดตสดทุก 20 วินาที ไม่ต้องรีโหลด)
+- ✅ ส่งออกรายงาน PDF รายเดือน (Workflow R + Gotenberg)
 
 ### 🔮 v3.0 (2027)
-- เพิ่ม LLM จุดที่ 2: Auto-reply LINE (Gemini ตอบแชทแทนบอท FAQ)
+- ✅ เพิ่ม LLM จุดที่ 2: Auto-reply LINE (Gemini ตอบแชทแทนบอท FAQ) → ทำแล้วเป็น Workflow G
 - Voice-to-text สำหรับแม่บ้านรายงานสถานะห้อง
 - Predictive pricing (AI แนะนำราคาตามฤดูกาล)
 
@@ -491,7 +530,8 @@ TIMEZONE=Asia/Bangkok
 
 | รายการ | ค่าใช้จ่าย | หมายเหตุ |
 |---|---|---|
-| n8n Cloud | **0 บาท** | Free tier 20 executions/วัน (พอใช้โรงแรมเล็ก) |
+| n8n (self-hosted ใน Docker) | **0 บาท** | รันบนเครื่องตัวเอง ไม่จำกัด executions แต่เครื่องต้องเปิดไว้ตลอด |
+| ngrok | **0 บาท** | Free plan ได้โดเมนคงที่ 1 โดเมน |
 | Google Sheets | **0 บาท** | Free 1 ล้าน cells |
 | LINE OA | **0 บาท** | Free messaging quota (500 push/เดือน) |
 | Gemini 3.5 Flash Lite | **0 บาท** | Free tier 15 req/min |
