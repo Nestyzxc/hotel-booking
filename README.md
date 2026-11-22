@@ -169,6 +169,7 @@
 | **E** | Re-booking | Cron 10:00 | - | - | ส่งข้อเสนอส่วนตัว (ใช้ tags จาก D) |
 | **F** | Daily Ops | Cron 09:00 | - | - | Welcome แขก + Digest แม่บ้าน |
 | **S** | Staff API | Webhook GET/POST | Staff Key | พนักงาน | เช็กอิน/เอาต์, แก้ห้อง, ส่ง push |
+| **R** | Monthly Report PDF *(v2.1)* | Cron วันที่ 1 08:00 + Webhook GET | Staff Key | เจ้าของ | สรุปเดือนที่แล้วเป็น PDF → อีเมล + สรุปสั้นทาง LINE ([คู่มือ](คู่มือติดตั้ง%20รายงานรายเดือน%20(Workflow%20R).md)) |
 
 ---
 
@@ -416,6 +417,7 @@ cd sai-lan-hotel-v2
 #    - workflow-e-rebooking.json
 #    - workflow-f-daily-ops.json
 #    - workflow-s-staff-api.json
+#    - workflow-r-monthly-report.json  (v2.1 · ต้องมี service gotenberg ใน docker-compose)
 
 # 3. ตั้งค่า Credentials ใน n8n
 #    - Google Sheets OAuth2
@@ -478,7 +480,7 @@ TIMEZONE=Asia/Bangkok
 ### 🔜 v2.1 (Q4 2026)
 - รองรับ Messenger / Telegram (ขยายช่องทาง)
 - Dashboard real-time ใน admin.html
-- ส่งออกรายงาน PDF รายเดือน
+- ✅ ส่งออกรายงาน PDF รายเดือน (Workflow R + Gotenberg)
 
 ### 🔮 v3.0 (2027)
 - เพิ่ม LLM จุดที่ 2: Auto-reply LINE (Gemini ตอบแชทแทนบอท FAQ)

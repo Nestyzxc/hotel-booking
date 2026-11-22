@@ -1,0 +1,744 @@
+{
+  "name": "R - Monthly Report PDF",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "monthsInterval": 1,
+              "triggerAtDayOfMonth": 1,
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "db468120-0538-51f6-9247-1bcbc79bdd11",
+      "name": "ทุกวันที่ 1 · 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "report",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://nestyzxc.github.io"
+        }
+      },
+      "id": "6a726b1e-7f5d-557b-81cf-3c58318f861f",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        440
+      ],
+      "webhookId": "b0e9479b-6b2c-5a0e-a3fa-225e89eabb44",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": null,
+          "name": "Staff Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1b3KoLtqp2wt_2rtRFNqdx0dkVoeujHMUR4QtwYwQwkA/values:batchGet?ranges=Config&ranges=RoomTypes&ranges=Rooms&ranges=Bookings&ranges=Offers&ranges=Customers&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "c56eab03-628e-500e-b4ff-99a54388c682",
+      "name": "Read Sheets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        240,
+        200
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": null,
+          "name": "Google Sheets SA"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1b3KoLtqp2wt_2rtRFNqdx0dkVoeujHMUR4QtwYwQwkA/values:batchGet?ranges=Config&ranges=RoomTypes&ranges=Rooms&ranges=Bookings&ranges=Offers&ranges=Customers&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "a946d6d7-4f37-5e52-8119-a73d38bcf0dd",
+      "name": "Read Sheets · หลังบ้าน",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        240,
+        440
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": null,
+          "name": "Google Sheets SA"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"message\": \"อ่านข้อมูลจาก Google Sheets ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง\"\n}",
+        "options": {
+          "responseCode": 503
+        }
+      },
+      "id": "3ec89faa-5b98-5437-9649-bd66b51df625",
+      "name": "Respond Error 503",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        480,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ===== Sai Lan helpers (ชุดเดียวกันทุก workflow) =====\nconst ZONE = 'Asia/Bangkok';\nconst NOW = $now.setZone(ZONE);\nconst TODAY = NOW.toFormat('yyyy-MM-dd');\nconst TOMORROW = NOW.plus({ days: 1 }).toFormat('yyyy-MM-dd');\nconst TS = NOW.toISO();\nconst ACTIVE = ['Confirmed', 'Checked-in', 'Need Attention'];          // สถานะที่ \"กินห้อง\"\nconst STATUS_TH = { 'Confirmed': 'ยืนยันแล้ว', 'Checked-in': 'กำลังเข้าพัก', 'Need Attention': 'ต้องดูแลด่วน',\n  'Checked-out': 'เช็กเอาต์แล้ว', 'Cancelled': 'ยกเลิกแล้ว', 'No-show': 'ไม่มาเข้าพัก' };\nconst HK_STATUS = ['Clean', 'Dirty', 'Cleaning', 'Out of Order'];\nconst HK_TH = { 'Clean': 'พร้อมเข้าพัก', 'Dirty': 'รอทำความสะอาด', 'Cleaning': 'กำลังทำความสะอาด', 'Out of Order': 'ปิดปรับปรุง' };\n\nconst num = (v, d = 0) => { const s = String(v ?? '').replace(/,/g, '').trim(); const n = Number(s); return s !== '' && Number.isFinite(n) ? n : d; };\nconst bool = (v, d = false) => { const s = String(v ?? '').trim().toUpperCase(); return s === '' ? d : ['TRUE', 'YES', 'Y', '1', 'ON'].includes(s); };\nconst list = (v) => String(v ?? '').split(/[\\n,]+/).map((s) => s.trim()).filter(Boolean);\nconst clip = (v, n) => String(v ?? '').trim().slice(0, n);\n\n// วันที่จากชีต → yyyy-MM-dd (รองรับเลข serial ของ Sheets และ d/m/yyyy แบบไทย)\nconst normDate = (v) => {\n  const s = String(v ?? '').trim();\n  if (!s) return '';\n  if (/^\\d{4}-\\d{2}-\\d{2}/.test(s)) return s.slice(0, 10);\n  if (/^\\d{5}(\\.\\d+)?$/.test(s)) return DateTime.fromISO('1899-12-30', { zone: ZONE }).plus({ days: Math.floor(Number(s)) }).toFormat('yyyy-MM-dd');\n  const m = s.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);\n  if (m) { let y = Number(m[3]); if (y > 2400) y -= 543; return `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; }\n  return s;\n};\n\n// ผลลัพธ์ Sheets API values:batchGet → { Config:[{...}], Bookings:[...], ..., cfg:{key:value} }\nfunction readSheets(resp) {\n  const S = {};\n  for (const vr of resp.valueRanges || []) {\n    const name = String(vr.range || '').split('!')[0].replace(/^'(.*)'$/, '$1');\n    const [head = [], ...rows] = vr.values || [];\n    const keys = head.map((h) => String(h ?? '').trim());\n    S[name] = rows.filter((r) => (r || []).some((c) => String(c ?? '').trim() !== '')).map((r) => {\n      const o = {};\n      keys.forEach((k, j) => { if (k) o[k] = r[j] == null ? '' : String(r[j]).trim(); });\n      return o;\n    });\n  }\n  for (const k of ['Config', 'Bookings', 'RoomTypes', 'Rooms', 'Offers', 'Promos', 'Messages', 'ActivityLog']) S[k] = S[k] || [];\n  S.Bookings = S.Bookings.filter((b) => b.booking_id);\n  for (const b of S.Bookings) { b.check_in = normDate(b.check_in); b.check_out = normDate(b.check_out); }\n  S.RoomTypes = S.RoomTypes.filter((t) => t.room_type).sort((a, b) => num(a.sort_order, 99) - num(b.sort_order, 99));\n  S.Rooms = S.Rooms.filter((r) => r.room_number).map((r) => ({ ...r, hk_status: HK_STATUS.includes(r.hk_status) ? r.hk_status : 'Clean' }));\n  S.cfg = {};\n  for (const r of S.Config) if (r.key) S.cfg[String(r.key).trim()] = r.value ?? '';\n  return S;\n}\n\nconst overlaps = (aIn, aOut, bIn, bOut) => aIn < bOut && bIn < aOut;   // คืนที่ทับกัน (วันเช็กเอาต์ไม่นับ)\n\n// ห้องว่างแต่ละประเภทในช่วงวัน (ไม่นับห้อง Out of Order และหักการจองที่ยังไม่ได้ระบุเลขห้อง)\nfunction availability(S, ci, co, exceptId = '') {\n  const busy = S.Bookings.filter((b) => ACTIVE.includes(b.status) && b.booking_id !== exceptId\n    && b.check_in && b.check_out && overlaps(ci, co, b.check_in, b.check_out));\n  const busyRooms = new Set(busy.filter((b) => b.room_number).map((b) => String(b.room_number)));\n  const out = {};\n  for (const t of S.RoomTypes) {\n    const units = S.Rooms.filter((r) => r.room_type === t.room_type && r.hk_status !== 'Out of Order');\n    const free = units.filter((r) => !busyRooms.has(String(r.room_number)));\n    const unassigned = busy.filter((b) => !b.room_number && b.room_type === t.room_type).length;\n    out[t.room_type] = { total: units.length, free, available: Math.max(0, free.length - unassigned) };\n  }\n  return out;\n}\n// เลือกห้อง: ห้องว่างที่สะอาดก่อน → ห้องว่างที่รอทำความสะอาด → ห้องที่แขกเดิมจะเช็กเอาต์วันนี้\n// ขอ \"ชั้นสูง\" → ชั้นสูงก่อน, ที่เหลือเรียงเลขห้อง\nfunction pickRoom(free, requests = '', S = null) {\n  const high = /ชั้นสูง/.test(requests);\n  const occupied = new Set((S ? S.Bookings : []).filter((x) => ['Checked-in', 'Need Attention'].includes(x.status) && x.room_number)\n    .map((x) => String(x.room_number)));\n  const rank = (r) => (occupied.has(String(r.room_number)) ? 2 : r.hk_status === 'Clean' ? 0 : 1);\n  return [...free].sort((a, b) => (rank(a) - rank(b))\n    || (high ? num(b.floor) - num(a.floor) : 0)\n    || String(a.room_number).localeCompare(String(b.room_number), 'en', { numeric: true }))[0];\n}\n\n// ราคาต่อคืน (คืนวันศุกร์-เสาร์ใช้ weekend_price ถ้ามี)\nfunction quote(type, ci, co) {\n  const nights = [];\n  let d = DateTime.fromISO(ci, { zone: ZONE });\n  const end = DateTime.fromISO(co, { zone: ZONE });\n  while (d.isValid && end.isValid && d < end && nights.length < 60) {\n    const weekend = d.weekday === 5 || d.weekday === 6;\n    const price = weekend && num(type.weekend_price) > 0 ? num(type.weekend_price) : num(type.price);\n    nights.push({ date: d.toFormat('yyyy-MM-dd'), price, weekend });\n    d = d.plus({ days: 1 });\n  }\n  return { nights, subtotal: nights.reduce((s, n) => s + n.price, 0) };\n}\n\n// โค้ดส่วนลด: ดีลส่วนตัวจากชีต Offers (Workflow E) หรือโค้ดทั่วไปจากชีต Promos\nfunction checkPromo(S, code, uid) {\n  code = String(code ?? '').trim().toUpperCase();\n  if (!code) return null;\n  const o = S.Offers.find((x) => String(x.promo_code).toUpperCase() === code);\n  if (o) {\n    if (o.converted_booking_id) return { code, valid: false, message: 'โค้ดนี้ถูกใช้ไปแล้ว' };\n    if (o.valid_until && normDate(o.valid_until) < TODAY) return { code, valid: false, message: 'โค้ดนี้หมดอายุแล้ว' };\n    if (uid && o.line_user_id && o.line_user_id !== uid) return { code, valid: false, message: 'โค้ดนี้เป็นสิทธิ์เฉพาะบัญชี LINE ที่ได้รับดีล' };\n    const pct = num(o.discount, 10);\n    return { code, valid: true, percent: pct, kind: 'personal', label: `ดีลพิเศษสำหรับคุณ ลด ${pct}%` };\n  }\n  const p = S.Promos.find((x) => String(x.code).toUpperCase() === code);\n  if (p) {\n    if (!bool(p.active, true)) return { code, valid: false, message: 'โค้ดนี้ปิดใช้งานแล้ว' };\n    if (p.valid_until && normDate(p.valid_until) < TODAY) return { code, valid: false, message: 'โค้ดนี้หมดอายุแล้ว' };\n    const pct = num(p.discount_percent);\n    return { code, valid: pct > 0, percent: pct, kind: 'general', label: p.note || `ส่วนลด ${pct}%`, message: pct > 0 ? '' : 'โค้ดนี้ไม่มีส่วนลด' };\n  }\n  return { code, valid: false, message: 'ไม่พบโค้ดส่วนลดนี้' };\n}\nconst discountOf = (subtotal, promo) => (promo && promo.valid ? Math.round(subtotal * Math.min(100, Math.max(0, promo.percent)) / 100) : 0);\nconst freeCancelUntil = (S, ci) => DateTime.fromISO(ci, { zone: ZONE }).minus({ days: num(S.cfg.free_cancel_days, 1) }).toFormat('yyyy-MM-dd');\nconst thaiDate = (ymd, weekday = true) => {\n  const d = DateTime.fromISO(String(ymd || ''), { zone: ZONE });\n  return d.isValid ? d.setLocale('th-TH').toLocaleString(weekday ? { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'short', year: 'numeric' }) : String(ymd || '-');\n};\nconst baht = (n) => '฿' + Math.round(num(n)).toLocaleString('en-US');\nconst guestsText = (b) => `${num(b.adults, 1)} ผู้ใหญ่${num(b.children) ? ` · ${num(b.children)} เด็ก` : ''}`;\nconst roomTypeName = (S, rt) => (S.RoomTypes.find((t) => t.room_type === rt) || {}).name || rt;\nconst hotelName = (S) => S.cfg.hotel_name || 'Sai Lan Hotel';\n\n// ---- Flex แจ้งกลุ่มแม่บ้าน ----\nfunction kv(label, value, strong = true) {\n  return { type: 'box', layout: 'baseline', spacing: 'sm', contents: [\n    { type: 'text', text: label, size: 'sm', color: '#8A8578', flex: 3 },\n    { type: 'text', text: String(value || '-'), size: 'sm', color: '#1F1F25', weight: strong ? 'bold' : 'regular', flex: 7, wrap: true },\n  ] };\n}\nfunction hkFlex(S, kind, b, extra = {}) {\n  const TITLES = {\n    new: ['📋 การจองใหม่ · เตรียมห้อง', '#8A6A1F'],\n    checkout: ['🧹 เช็กเอาต์แล้ว · ทำความสะอาด', '#B23A2E'],\n    move: ['🔁 แขกย้ายห้อง · ห้องเดิมว่างแล้ว', '#B23A2E'],\n    reassign: ['🔁 เปลี่ยนห้อง · เตรียมห้องใหม่', '#8A6A1F'],\n    cancel: ['❌ ยกเลิกการจอง · ไม่ต้องเตรียมห้อง', '#5C5850'],\n  };\n  const prep = kind === 'new' || kind === 'reassign';\n  const [title, color] = TITLES[kind] || TITLES.new;\n  const room = String(extra.room || b.room_number || '');\n  const rows = [kv('ห้อง', `${room || 'ยังไม่ระบุ'} · ${roomTypeName(S, b.room_type)}`)];\n  if (kind === 'reassign' && extra.from) rows.push(kv('ห้องเดิม', `${extra.from} (ไม่ต้องเตรียมแล้ว)`, false));\n  if (prep || kind === 'cancel') {\n    rows.push(kv('เช็กอิน', `${thaiDate(b.check_in)} · ${S.cfg.checkin_time || '14:00'}`));\n    rows.push(kv('เช็กเอาต์', thaiDate(b.check_out)));\n  }\n  if (prep) {\n    rows.push(kv('ผู้เข้าพัก', guestsText(b)));\n    if (b.arrival_time) rows.push(kv('เวลาถึง', b.arrival_time));\n    if (b.special_requests) rows.push(kv('คำขอพิเศษ', b.special_requests));\n    if (b.check_in === TODAY) rows.push({ type: 'text', text: '⚡ เข้าพักวันนี้ กรุณาเตรียมห้องด่วน', size: 'sm', color: '#B23A2E', weight: 'bold', wrap: true, margin: 'md' });\n  }\n  if (kind === 'checkout' || kind === 'move') {\n    rows.push(kv('เวลา', `${NOW.toFormat('HH:mm')} น.`));\n    rows.push(kv('แขกถัดไป', extra.next || 'ยังไม่มีการจอง', !!extra.next));\n  }\n  const buttons = [];\n  if (room && kind !== 'cancel') {\n    if (!prep) buttons.push({ type: 'button', style: 'secondary', height: 'sm',\n      action: { type: 'postback', label: 'เริ่มทำความสะอาด', data: `action=hk_start&room=${encodeURIComponent(room)}`, displayText: `🧹 เริ่มทำความสะอาดห้อง ${room}` } });\n    buttons.push({ type: 'button', style: 'primary', color: '#2E7D4F', height: 'sm',\n      action: { type: 'postback', label: 'ห้องพร้อมแล้ว ✅', data: `action=hk_done&room=${encodeURIComponent(room)}`, displayText: `✅ ห้อง ${room} พร้อมแล้ว` } });\n  }\n  const bubble = {\n    type: 'bubble', size: 'kilo',\n    header: { type: 'box', layout: 'vertical', backgroundColor: color, paddingAll: '14px',\n      contents: [{ type: 'text', text: title, color: '#FFFFFF', weight: 'bold', size: 'md', wrap: true }] },\n    body: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '14px', contents: rows },\n  };\n  if (buttons.length) bubble.footer = { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '12px', contents: buttons };\n  return { type: 'flex', altText: `${title} ห้อง ${room || '-'}`, contents: bubble };\n}\n// แขกคนถัดไปของห้องนี้ (วันนี้หรือหลังจากนี้)\nfunction nextArrival(S, room, exceptId = '') {\n  const n = S.Bookings.filter((x) => String(x.room_number) === String(room) && x.booking_id !== exceptId\n    && x.status === 'Confirmed' && x.check_in >= TODAY).sort((a, c) => a.check_in.localeCompare(c.check_in))[0];\n  if (!n) return '';\n  return n.check_in === TODAY ? `⚠️ วันนี้ ${S.cfg.checkin_time || '14:00'} (${n.booking_id})` : `${thaiDate(n.check_in)} (${n.booking_id})`;\n}\n// ===== จบ helpers =====\n\n// ===== Build Report (Run Once for All Items) =====\n// สรุปผลประกอบการ 1 เดือน → หน้า HTML (ให้ Gotenberg แปลงเป็น PDF) + สรุปสั้นทาง LINE + ข้อความอีเมล\n// เดือนที่สรุป: เรียกจากหน้าหลังบ้าน ?month=yyyy-MM ได้ · ไม่ระบุ / ตั้งเวลา = เดือนที่แล้ว\n// วิธีนับ: รายได้และคืนที่ขายได้ \"แบ่งตามคืนที่พักจริงในเดือนนั้น\" (จอง 3 คืนข้ามเดือน → นับคืนละ 1/3 ของราคา)\nconst S = readSheets($input.first().json);\nconst cfg = S.cfg;\nconst HOTEL = hotelName(S);\nS.Customers = S.Customers || [];\n\nconst fromWeb = (() => { try { return $('Webhook').isExecuted; } catch (e) { return false; } })();\nconst q = fromWeb ? (($('Webhook').first().json || {}).query || {}) : {};\nconst asked = String(q.month || '').trim();\nif (!fromWeb && !bool(cfg.report_enabled, true)) return [];   // ปิดรายงานอัตโนมัติได้ที่ Config → report_enabled = FALSE\nconst M0 = /^\\d{4}-(0[1-9]|1[0-2])$/.test(asked)\n  ? DateTime.fromISO(asked + '-01', { zone: ZONE }) : NOW.startOf('month').minus({ months: 1 });\nconst SOLD = ['Confirmed', 'Checked-in', 'Need Attention', 'Checked-out'];   // คืนที่ \"ขายได้\" (ไม่นับยกเลิก / No-show)\nconst SRC_TH = { liff: 'LINE', web: 'เว็บไซต์', 'Walk-in': 'Walk-in', Phone: 'โทรศัพท์', Agoda: 'Agoda', 'Booking.com': 'Booking.com',\n  'Trip.com': 'Trip.com', Expedia: 'Expedia', Other: 'อื่น ๆ' };\nconst ymd = (v) => normDate(String(v ?? '').slice(0, 10));\nconst pct = (a, b) => (b > 0 ? (a / b) * 100 : 0);\nconst round1 = (n) => Math.round(n * 10) / 10;\nconst guestKey = (b) => b.line_user_id || String(b.phone || '').replace(/\\D/g, '') || String(b.email || '').toLowerCase() || b.booking_id;\n\nfunction monthStats(m) {\n  const start = m.toFormat('yyyy-MM-dd');\n  const end = m.plus({ months: 1 }).toFormat('yyyy-MM-dd');\n  const days = m.daysInMonth;\n  const inM = (d) => d && d >= start && d < end;\n  const roomsTotal = S.Rooms.length;\n  const available = roomsTotal * days;\n  const daily = Array.from({ length: days }, () => 0);\n  const byType = {};\n  for (const t of S.RoomTypes) byType[t.room_type] = { name: t.name || t.room_type, rooms: S.Rooms.filter((r) => r.room_type === t.room_type).length, nights: 0, revenue: 0 };\n  const bySource = {};\n  let nights = 0, revenue = 0;\n  const stays = [];\n  for (const b of S.Bookings) {\n    if (!SOLD.includes(b.status) || !b.check_in || !b.check_out || !(b.check_in < end && b.check_out > start)) continue;\n    const ci = DateTime.fromISO(b.check_in, { zone: ZONE });\n    const co = DateTime.fromISO(b.check_out, { zone: ZONE });\n    const total = Math.max(1, Math.round(co.diff(ci, 'days').days));\n    const perNight = num(b.price_total) / total;\n    let n = 0;\n    for (let d = ci; d < co && n <= 400; d = d.plus({ days: 1 })) {\n      const s = d.toFormat('yyyy-MM-dd');\n      if (inM(s)) { n++; daily[d.day - 1]++; }\n    }\n    if (!n) continue;\n    const rev = perNight * n;\n    nights += n; revenue += rev;\n    const t = byType[b.room_type] || (byType[b.room_type] = { name: b.room_type || 'ไม่ระบุ', rooms: 0, nights: 0, revenue: 0 });\n    t.nights += n; t.revenue += rev;\n    const src = SRC_TH[b.source] || b.source || 'ไม่ระบุ';\n    const so = bySource[src] || (bySource[src] = { bookings: 0, nights: 0, revenue: 0 });\n    so.bookings++; so.nights += n; so.revenue += rev;\n    stays.push(b);\n  }\n  const arrivals = S.Bookings.filter((b) => SOLD.includes(b.status) && inM(b.check_in));\n  const created = S.Bookings.filter((b) => inM(ymd(b.created_at)));\n  const cancelled = S.Bookings.filter((b) => b.status === 'Cancelled' && inM(ymd(b.cancelled_at) || ymd(b.last_updated)));\n  const noShow = S.Bookings.filter((b) => b.status === 'No-show' && inM(b.check_in));\n  const rated = S.Bookings.filter((b) => inM(b.check_in) && num(b.rating) >= 1 && num(b.rating) <= 5);\n  const ratingDist = [1, 2, 3, 4, 5].map((s) => rated.filter((b) => Math.round(num(b.rating)) === s).length);\n  const issues = {};\n  for (const b of S.Bookings) if (b.issue_category && inM(b.check_in)) issues[b.issue_category] = (issues[b.issue_category] || 0) + 1;\n  // ลูกค้าใหม่ = ไม่เคยมีการจองที่เข้าพักก่อนเดือนนี้\n  const before = new Set(S.Bookings.filter((b) => SOLD.includes(b.status) && b.check_in && b.check_in < start).map(guestKey));\n  const guests = [...new Set(arrivals.map(guestKey))];\n  const returning = guests.filter((g) => before.has(g)).length;\n  const tagCount = {};\n  for (const b of S.Bookings) if (inM(b.check_out)) for (const t of list(b.preference_tags)) tagCount[t] = (tagCount[t] || 0) + 1;\n  const offersSent = S.Offers.filter((o) => inM(ymd(o.sent_at))).length;\n  const offersWon = S.Offers.filter((o) => o.converted_booking_id && inM(ymd(o.converted_at))).length;\n  const discount = created.filter((b) => !['Cancelled'].includes(b.status)).reduce((s, b) => s + num(b.discount), 0);\n  const unpaid = S.Bookings.filter((b) => b.status === 'Checked-out' && inM(b.check_out) && b.payment_status !== 'Paid');\n  return {\n    key: m.toFormat('yyyy-MM'), start, end, days, roomsTotal, available, nights, revenue,\n    occupancy: pct(nights, available), adr: nights ? revenue / nights : 0, revpar: available ? revenue / available : 0,\n    daily: daily.map((n) => pct(n, roomsTotal)),\n    byType: Object.values(byType).filter((t) => t.rooms || t.nights),\n    bySource: Object.entries(bySource).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.revenue - a.revenue),\n    stays: stays.length, arrivals: arrivals.length, created: created.length, cancelled: cancelled.length, noShow: noShow.length,\n    adults: arrivals.reduce((s, b) => s + num(b.adults, 1), 0), children: arrivals.reduce((s, b) => s + num(b.children), 0),\n    los: arrivals.length ? arrivals.reduce((s, b) => s + Math.max(1, num(b.nights, 1)), 0) / arrivals.length : 0,\n    guests: guests.length, returning, newGuests: guests.length - returning,\n    rated: rated.length, rating: rated.length ? rated.reduce((s, b) => s + num(b.rating), 0) / rated.length : 0, ratingDist,\n    issues: Object.entries(issues).sort((a, b) => b[1] - a[1]),\n    tags: Object.entries(tagCount).sort((a, b) => b[1] - a[1]).slice(0, 8),\n    offersSent, offersWon, discount,\n    unpaid: unpaid.length, unpaidAmount: unpaid.reduce((s, b) => s + num(b.price_total), 0),\n  };\n}\n\nconst cur = monthStats(M0);\nconst prev = monthStats(M0.minus({ months: 1 }));\nconst MONTH_TH = M0.setLocale('th-TH').toLocaleString({ month: 'long', year: 'numeric' });\nconst PREV_TH = M0.minus({ months: 1 }).setLocale('th-TH').toLocaleString({ month: 'short', year: '2-digit' });\n\n// ---------- HTML ----------\nconst esc = (s) => String(s ?? '').replace(/[&<>\"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\nconst fmt = (n, d = 0) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });\nfunction delta(a, b, unit = '%') {\n  if (unit === 'pt') { const d = a - b; if (Math.abs(d) < 0.05) return `<span class=\"d flat\">เท่าเดิม</span>`; return `<span class=\"d ${d > 0 ? 'up' : 'down'}\">${d > 0 ? '▲' : '▼'} ${fmt(Math.abs(d), 1)} จุด</span>`; }\n  if (!b) return a ? '<span class=\"d flat\">ใหม่</span>' : '<span class=\"d flat\">–</span>';\n  const d = ((a - b) / b) * 100;\n  if (Math.abs(d) < 0.5) return `<span class=\"d flat\">เท่าเดิม</span>`;\n  return `<span class=\"d ${d > 0 ? 'up' : 'down'}\">${d > 0 ? '▲' : '▼'} ${fmt(Math.abs(d), 0)}%</span>`;\n}\nconst tile = (label, value, d, sub = '') => `<div class=\"tile\"><div class=\"tl\">${label}</div><div class=\"tv\">${value}</div><div class=\"ts\">${d}${sub ? ' ' + sub : ''}</div></div>`;\n\nfunction chart(values) {\n  const W = 700, H = 120, P = 30, n = values.length, bw = (W - P) / n;\n  const bars = values.map((v, i) => {\n    const h = Math.max(v > 0 ? 2 : 0, (Math.min(100, v) / 100) * (H - 26));\n    const x = P + i * bw + 1.5, y = H - 16 - h;\n    const day = i + 1;\n    const wk = M0.set({ day }).weekday >= 6;\n    return `<rect x=\"${x.toFixed(1)}\" y=\"${y.toFixed(1)}\" width=\"${(bw - 3).toFixed(1)}\" height=\"${h.toFixed(1)}\" rx=\"1.5\" fill=\"${wk ? '#B08D3E' : '#D9C79B'}\"/>`\n      + ((day === 1 || day % 5 === 0) ? `<text x=\"${(x + (bw - 3) / 2).toFixed(1)}\" y=\"${H - 3}\" text-anchor=\"middle\">${day}</text>` : '');\n  }).join('');\n  const grid = [0, 50, 100].map((g) => { const y = H - 16 - (g / 100) * (H - 26); return `<line x1=\"${P}\" x2=\"${W}\" y1=\"${y}\" y2=\"${y}\" stroke=\"#E7E1D4\" stroke-width=\"1\"/><text x=\"${P - 4}\" y=\"${y + 3}\" text-anchor=\"end\">${g}%</text>`; }).join('');\n  return `<svg viewBox=\"0 0 ${W} ${H}\" width=\"100%\" class=\"chart\">${grid}${bars}</svg>`;\n}\nconst table = (head, rows, empty = 'ไม่มีข้อมูล') => `<table><thead><tr>${head.map((h, i) => `<th${i ? ' class=\"r\"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>${rows.length ? rows.map((r) => `<tr>${r.map((c, i) => `<td${i ? ' class=\"r\"' : ''}>${c}</td>`).join('')}</tr>`).join('') : `<tr><td colspan=\"${head.length}\" class=\"mute\">${empty}</td></tr>`}</tbody></table>`;\n\nconst typeRows = cur.byType.map((t) => [esc(t.name), fmt(t.rooms), fmt(t.nights), fmt(pct(t.nights, t.rooms * cur.days), 1) + '%', baht(t.revenue), t.nights ? baht(t.revenue / t.nights) : '–']);\nconst srcRows = cur.bySource.map((s) => [esc(s.name), fmt(s.bookings), fmt(s.nights), baht(s.revenue), fmt(pct(s.revenue, cur.revenue), 0) + '%']);\nconst stars = cur.ratingDist.map((c, i) => ({ s: i + 1, c })).reverse().map(({ s, c }) => {\n  const w = cur.rated ? (c / cur.rated) * 100 : 0;\n  return `<div class=\"star\"><span>${s} ★</span><div class=\"bar\"><i style=\"width:${w.toFixed(1)}%\"></i></div><b>${c}</b></div>`;\n}).join('');\n\nconst html = `<!doctype html><html lang=\"th\"><head><meta charset=\"utf-8\"><title>${esc(HOTEL)} · ${esc(MONTH_TH)}</title>\n<style>\n@page { size: A4; margin: 0; }\n* { box-sizing: border-box; }\nbody { margin: 0; font-family: 'Noto Sans Thai', 'Sarabun', sans-serif; color: #1F1F25; font-size: 11px; line-height: 1.45; -webkit-print-color-adjust: exact; print-color-adjust: exact; }\n.page { padding: 30px 36px 20px; }\nheader { background: #16161A; color: #FAF7F0; margin: -30px -36px 18px; padding: 22px 36px 18px; display: flex; justify-content: space-between; align-items: flex-end; }\nheader small { color: #D4AF6A; font-weight: 700; letter-spacing: .04em; font-size: 11px; }\nheader h1 { margin: 4px 0 0; font-size: 22px; font-weight: 700; }\nheader .meta { text-align: right; color: #C9C3B5; font-size: 10.5px; }\nh2 { font-size: 13px; color: #8A6A1F; margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 1.5px solid #E7E1D4; }\n.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }\n.tile { border: 1px solid #E7E1D4; border-radius: 8px; padding: 8px 12px; background: #FBF9F4; }\n.tl { color: #5C5850; font-size: 10.5px; } .tv { font-size: 19px; font-weight: 700; margin-top: 2px; } .ts { font-size: 10px; color: #8A8578; }\n.d { font-weight: 700; } .d.up { color: #2E7D4F; } .d.down { color: #B23A2E; } .d.flat { color: #8A8578; }\n.chart text { font-size: 9px; fill: #8A8578; font-family: inherit; }\n.legend { font-size: 10px; color: #8A8578; margin-top: 2px; } .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 4px -1px 10px; }\ntable { width: 100%; border-collapse: collapse; font-size: 11px; }\nth { text-align: left; color: #5C5850; font-weight: 600; border-bottom: 1px solid #D9D2C3; padding: 3px 6px; }\ntd { padding: 3px 6px; border-bottom: 1px solid #F0EBE0; } .r { text-align: right; } .mute { color: #8A8578; text-align: center; }\n.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }\n.kv { display: grid; grid-template-columns: 1fr auto; row-gap: 2px; } .kv span { color: #5C5850; } .kv b { text-align: right; }\n.star { display: grid; grid-template-columns: 34px 1fr 26px; align-items: center; gap: 6px; margin: 1px 0; }\n.bar { height: 8px; background: #F0EBE0; border-radius: 4px; overflow: hidden; } .bar i { display: block; height: 100%; background: #B08D3E; }\n.star b { text-align: right; }\n.chips span { display: inline-block; background: #F3EEE2; border-radius: 10px; padding: 2px 9px; margin: 0 4px 4px 0; font-size: 10.5px; }\n.note { margin-top: 14px; font-size: 9.5px; color: #8A8578; border-top: 1px solid #E7E1D4; padding-top: 8px; }\n.alert { color: #B23A2E; font-weight: 700; }\n</style></head><body><div class=\"page\">\n<header><div><small>${esc(HOTEL).toUpperCase()}</small><h1>รายงานสรุปประจำเดือน ${esc(MONTH_TH)}</h1></div>\n<div class=\"meta\">${cur.roomsTotal} ห้อง · ${cur.days} วัน<br>สร้างเมื่อ ${esc(thaiDate(TODAY, false))} ${NOW.toFormat('HH:mm')} น.</div></header>\n\n<div class=\"tiles\">\n${tile('รายได้ค่าห้องพัก', baht(cur.revenue), delta(cur.revenue, prev.revenue), 'เทียบ ' + PREV_TH)}\n${tile('อัตราการเข้าพัก', fmt(cur.occupancy, 1) + '%', delta(cur.occupancy, prev.occupancy, 'pt'), `${fmt(cur.nights)}/${fmt(cur.available)} ห้อง-คืน`)}\n${tile('ราคาเฉลี่ยต่อคืน (ADR)', cur.nights ? baht(cur.adr) : '–', delta(cur.adr, prev.adr))}\n${tile('รายได้ต่อห้องที่มี (RevPAR)', baht(cur.revpar), delta(cur.revpar, prev.revpar))}\n${tile('แขกเข้าพัก', fmt(cur.arrivals) + ' การจอง', delta(cur.arrivals, prev.arrivals), `${fmt(cur.adults)} ผู้ใหญ่ · ${fmt(cur.children)} เด็ก`)}\n${tile('คะแนนเฉลี่ย', cur.rated ? fmt(cur.rating, 2) + ' / 5' : '–', cur.rated && prev.rated ? delta(cur.rating, prev.rating) : '<span class=\"d flat\">–</span>', `จาก ${fmt(cur.rated)} รีวิว`)}\n</div>\n\n<h2>อัตราการเข้าพักรายวัน</h2>\n${chart(cur.daily)}\n<div class=\"legend\"><i style=\"background:#D9C79B\"></i>จันทร์–ศุกร์<i style=\"background:#B08D3E\"></i>เสาร์–อาทิตย์</div>\n\n<h2>แยกตามประเภทห้อง</h2>\n${table(['ประเภทห้อง', 'จำนวนห้อง', 'คืนที่ขาย', 'เข้าพัก', 'รายได้', 'ADR'], typeRows)}\n\n<div class=\"cols\">\n<div><h2>ช่องทางการจอง</h2>${table(['ช่องทาง', 'การจอง', 'คืน', 'รายได้', 'สัดส่วน'], srcRows)}</div>\n<div><h2>การจองในเดือนนี้</h2><div class=\"kv\">\n<span>การจองใหม่ (วันที่ทำรายการ)</span><b>${fmt(cur.created)}</b>\n<span>ยกเลิก</span><b>${fmt(cur.cancelled)}</b>\n<span>ไม่มาเข้าพัก (No-show)</span><b>${fmt(cur.noShow)}</b>\n<span>จำนวนคืนเฉลี่ยต่อการจอง</span><b>${fmt(cur.los, 1)} คืน</b>\n<span>ส่วนลดที่ให้ไป</span><b>${baht(cur.discount)}</b>\n<span>เช็กเอาต์แล้วแต่ยังไม่ชำระ</span><b class=\"${cur.unpaid ? 'alert' : ''}\">${fmt(cur.unpaid)} รายการ · ${baht(cur.unpaidAmount)}</b>\n</div></div>\n</div>\n\n<div class=\"cols\">\n<div><h2>ความพึงพอใจ</h2>${cur.rated ? stars : '<div class=\"mute\">ยังไม่มีคะแนนในเดือนนี้</div>'}\n<div class=\"kv\" style=\"margin-top:8px\"><span>แจ้งปัญหาระหว่างเข้าพัก</span><b>${fmt(cur.issues.reduce((s, x) => s + x[1], 0))} ครั้ง</b>\n${cur.issues.slice(0, 5).map(([k, v]) => `<span>· ${esc(k)}</span><b>${v}</b>`).join('')}</div></div>\n<div><h2>ลูกค้าและดีลกลับมาจอง</h2><div class=\"kv\">\n<span>ลูกค้า (ไม่ซ้ำ)</span><b>${fmt(cur.guests)}</b>\n<span>ลูกค้าใหม่</span><b>${fmt(cur.newGuests)}</b>\n<span>ลูกค้าเก่ากลับมาพัก</span><b>${fmt(cur.returning)} (${fmt(pct(cur.returning, cur.guests), 0)}%)</b>\n<span>ส่งดีลส่วนตัวทาง LINE</span><b>${fmt(cur.offersSent)}</b>\n<span>ดีลที่กลับมาจองจริง</span><b>${fmt(cur.offersWon)}${cur.offersSent ? ` (${fmt(pct(cur.offersWon, cur.offersSent), 0)}%)` : ''}</b>\n</div>\n${cur.tags.length ? `<div style=\"margin-top:10px;color:#5C5850;font-size:10.5px\">สิ่งที่แขกชอบ (AI สรุปจากแชท)</div><div class=\"chips\" style=\"margin-top:4px\">${cur.tags.map(([t, c]) => `<span>${esc(t)}${c > 1 ? ' ×' + c : ''}</span>`).join('')}</div>` : ''}\n</div></div>\n\n<div class=\"note\">รายได้และคืนที่ขายได้นับตามคืนที่พักจริงในเดือนนี้ (การจองข้ามเดือนแบ่งตามจำนวนคืน) ไม่รวมการจองที่ยกเลิกและไม่มาเข้าพัก ·\nอัตราการเข้าพัก = คืนที่ขาย ÷ (ห้องทั้งหมด × จำนวนวัน) · ข้อมูลจาก Google Sheets ณ เวลาที่สร้างรายงาน</div>\n</div></body></html>`;\n\n// ---------- สรุปสั้นทาง LINE / อีเมล ----------\nconst FILE = `sai-lan-report-${cur.key}.pdf`;\nconst summaryLines = [\n  `รายได้ค่าห้อง ${baht(cur.revenue)}`,\n  `เข้าพัก ${fmt(cur.occupancy, 1)}% (${fmt(cur.nights)} ห้อง-คืน)`,\n  `ADR ${cur.nights ? baht(cur.adr) : '–'} · RevPAR ${baht(cur.revpar)}`,\n  `แขก ${fmt(cur.arrivals)} การจอง · คะแนน ${cur.rated ? fmt(cur.rating, 2) : '–'}/5`,\n];\nconst flexRows = [\n  kv('รายได้ค่าห้อง', baht(cur.revenue)),\n  kv('อัตราเข้าพัก', `${fmt(cur.occupancy, 1)}%`),\n  kv('ADR', cur.nights ? baht(cur.adr) : '–'),\n  kv('แขกเข้าพัก', `${fmt(cur.arrivals)} การจอง`),\n  kv('คะแนนเฉลี่ย', cur.rated ? `${fmt(cur.rating, 2)} / 5` : '–'),\n];\nif (cur.unpaid) flexRows.push(kv('ค้างชำระ', `${cur.unpaid} รายการ · ${baht(cur.unpaidAmount)}`));\nflexRows.push({ type: 'text', text: cfg.report_email ? `ไฟล์ PDF ส่งไปที่อีเมล ${cfg.report_email} แล้ว` : 'ดาวน์โหลด PDF ได้จากระบบหลังบ้าน', size: 'xs', color: '#8A8578', wrap: true, margin: 'lg' });\nconst flex = { type: 'flex', altText: `สรุปเดือน ${MONTH_TH}: รายได้ ${baht(cur.revenue)} · เข้าพัก ${fmt(cur.occupancy, 1)}%`, contents: { type: 'bubble', size: 'kilo',\n  header: { type: 'box', layout: 'vertical', backgroundColor: '#16161A', paddingAll: '16px', contents: [\n    { type: 'text', text: HOTEL, size: 'xs', color: '#D4AF6A', weight: 'bold' },\n    { type: 'text', text: `📊 สรุปเดือน ${MONTH_TH}`, size: 'md', color: '#FAF7F0', weight: 'bold', margin: 'sm', wrap: true }] },\n  body: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '14px', contents: flexRows } } };\n\nconst emailHtml = `<p>รายงานสรุปประจำเดือน <b>${esc(MONTH_TH)}</b> ของ ${esc(HOTEL)} แนบมาเป็นไฟล์ PDF</p><ul>${summaryLines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><p style=\"color:#8A8578;font-size:12px\">ส่งอัตโนมัติจาก n8n (Workflow R) ทุกวันที่ 1 ของเดือน</p>`;\n\nreturn [{\n  json: {\n    month: cur.key, month_th: MONTH_TH, from_web: fromWeb, file_name: FILE,\n    stats: { ...cur, daily: undefined }, prev: { revenue: prev.revenue, occupancy: prev.occupancy, adr: prev.adr, nights: prev.nights },\n    gotenberg_url: String(cfg.gotenberg_url || 'http://gotenberg:3000').replace(/\\/+$/, ''),\n    email_to: cfg.report_email || '', email_from: cfg.report_email_from || cfg.report_email || '', email_subject: `[${HOTEL}] รายงานสรุปเดือน ${MONTH_TH}`, email_html: emailHtml,\n    line_to: cfg.report_line_to || '', push_body: cfg.report_line_to ? { to: cfg.report_line_to, messages: [flex] } : null,\n    activity: { timestamp: TS, staff: fromWeb ? 'พนักงาน (หลังบ้าน)' : 'ระบบ', action: 'monthly_report', booking_id: '', room_number: '',\n      detail: `รายงานเดือน ${cur.key} · ${summaryLines.join(' · ')}` },\n  },\n  binary: { index: { data: Buffer.from(html, 'utf8').toString('base64'), mimeType: 'text/html', fileName: 'index.html', fileExtension: 'html' } },\n  pairedItem: { item: 0 },\n}];\n"
+      },
+      "id": "05eabfe1-5457-5d60-9fb0-fc84da00f078",
+      "name": "Build Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Build Report').first().json.gotenberg_url }}/forms/chromium/convert/html",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Gotenberg-Output-Filename",
+              "value": "={{ $('Build Report').first().json.file_name.replace(/\\.pdf$/, '') }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "files",
+              "inputDataFieldName": "index"
+            },
+            {
+              "name": "paperWidth",
+              "value": "8.27"
+            },
+            {
+              "name": "paperHeight",
+              "value": "11.7"
+            },
+            {
+              "name": "marginTop",
+              "value": "0"
+            },
+            {
+              "name": "marginBottom",
+              "value": "0"
+            },
+            {
+              "name": "marginLeft",
+              "value": "0"
+            },
+            {
+              "name": "marginRight",
+              "value": "0"
+            },
+            {
+              "name": "printBackground",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "c08e023b-c74b-5c59-80ea-1ea36a7d9a2c",
+      "name": "Render PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        720,
+        320
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "69d1d34a-3e35-5dc6-9799-b26dc1ede9fe",
+              "leftValue": "={{ $('Build Report').first().json.from_web === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": false,
+        "options": {}
+      },
+      "id": "89728bda-1954-52da-a14f-93732030f280",
+      "name": "จากหลังบ้าน?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        960,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "inputFieldName": "data",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/pdf"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "=attachment; filename=\"{{ $('Build Report').first().json.file_name }}\""
+              }
+            ]
+          }
+        }
+      },
+      "id": "b0efe455-ceed-5401-b092-7342d353b40d",
+      "name": "Respond · PDF",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1200,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "dc743aa1-8617-5406-8e79-b871ffa80b4b",
+              "leftValue": "={{ $('Build Report').first().json.email_to !== '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": false,
+        "options": {}
+      },
+      "id": "d9f1985f-2cc6-51bd-9d17-eb65311e9a5c",
+      "name": "ส่งอีเมล?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        1200,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('Build Report').first().json.email_from }}",
+        "toEmail": "={{ $('Build Report').first().json.email_to }}",
+        "subject": "={{ $('Build Report').first().json.email_subject }}",
+        "emailFormat": "html",
+        "html": "={{ $('Build Report').first().json.email_html }}",
+        "options": {
+          "attachments": "data",
+          "appendAttribution": false
+        }
+      },
+      "id": "4dc4c86a-f389-5e12-a902-12c34f759951",
+      "name": "Send Email · เจ้าของ",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1440,
+        340
+      ],
+      "credentials": {
+        "smtp": {
+          "id": null,
+          "name": "SMTP Report"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d72a66b0-32e5-5770-b716-00ba0e623ee4",
+              "leftValue": "={{ $('Build Report').first().json.line_to !== '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": false,
+        "options": {}
+      },
+      "id": "8558b79a-e38b-5f52-9aa3-88aa6e0e56a7",
+      "name": "แจ้ง LINE?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        1200,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Build Report').first().json.push_body) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "684d7a7d-f98f-5c14-b3f5-a46f3152c678",
+      "name": "Push LINE · เจ้าของ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1440,
+        520
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": null,
+          "name": "LINE Channel Token"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1b3KoLtqp2wt_2rtRFNqdx0dkVoeujHMUR4QtwYwQwkA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ActivityLog",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $('Build Report').first().json.activity.timestamp }}",
+            "staff": "={{ $('Build Report').first().json.activity.staff }}",
+            "action": "={{ $('Build Report').first().json.activity.action }}",
+            "booking_id": "={{ $('Build Report').first().json.activity.booking_id }}",
+            "room_number": "={{ $('Build Report').first().json.activity.room_number }}",
+            "detail": "={{ $('Build Report').first().json.activity.detail }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "staff",
+              "displayName": "staff",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "booking_id",
+              "displayName": "booking_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "room_number",
+              "displayName": "room_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detail",
+              "displayName": "detail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "b9162efe-c756-519e-b47a-4fcf291fca85",
+      "name": "Log Activity",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1200,
+        680
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": null,
+          "name": "Google Sheets SA"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "242eb6b6-91bf-5544-b4f6-c74153da806e",
+              "leftValue": "={{ $('Build Report').first().json.from_web === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": false,
+        "options": {}
+      },
+      "id": "7dd40aa8-f837-5e11-8738-5cb3231dfa4e",
+      "name": "Render ผิดพลาด · หลังบ้าน?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        960,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"message\": \"สร้างไฟล์ PDF ไม่สำเร็จ ตรวจว่า Gotenberg ทำงานอยู่ แล้วลองใหม่อีกครั้ง\"\n}",
+        "options": {
+          "responseCode": 502
+        }
+      },
+      "id": "578a1704-be27-557e-90ff-cb5bc1262ed3",
+      "name": "Respond Error 502",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1200,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "สร้าง PDF ไม่สำเร็จ: เรียก Gotenberg ไม่ได้ (ดู Config → gotenberg_url และ docker compose ps)"
+      },
+      "id": "151507a5-3bc8-5738-a651-591da8329010",
+      "name": "Stop · สร้าง PDF ไม่สำเร็จ",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        960
+      ]
+    }
+  ],
+  "connections": {
+    "ทุกวันที่ 1 · 08:00": {
+      "main": [
+        [
+          {
+            "node": "Read Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Read Sheets · หลังบ้าน",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sheets": {
+      "main": [
+        [
+          {
+            "node": "Build Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sheets · หลังบ้าน": {
+      "main": [
+        [
+          {
+            "node": "Build Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error 503",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Report": {
+      "main": [
+        [
+          {
+            "node": "Render PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render PDF": {
+      "main": [
+        [
+          {
+            "node": "จากหลังบ้าน?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Activity",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Render ผิดพลาด · หลังบ้าน?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "จากหลังบ้าน?": {
+      "main": [
+        [
+          {
+            "node": "Respond · PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ส่งอีเมล?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "แจ้ง LINE?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ส่งอีเมล?": {
+      "main": [
+        [
+          {
+            "node": "Send Email · เจ้าของ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "แจ้ง LINE?": {
+      "main": [
+        [
+          {
+            "node": "Push LINE · เจ้าของ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render ผิดพลาด · หลังบ้าน?": {
+      "main": [
+        [
+          {
+            "node": "Respond Error 502",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop · สร้าง PDF ไม่สำเร็จ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Bangkok"
+  },
+  "pinData": {}
+}
