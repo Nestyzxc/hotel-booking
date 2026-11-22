@@ -44,4 +44,28 @@ test.describe('index.html (หน้าจองห้องพัก)', () => {
 
     expectNoPageErrors(errors);
   });
+
+  test('แชทบอท "ถามน้องใส": ส่งคำถามไปที่ /chat และแสดงคำตอบ', async ({ page }) => {
+    let asked = null;
+    const errors = await preparePage(page, {
+      api: (route) => {
+        if (/\/webhook\/chat/.test(route.request().url())) {
+          asked = route.request().postDataJSON();
+          return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ answer: 'เช็กอินได้ตั้งแต่ 14:00 น. ค่ะ', handoff: false }) });
+        }
+        return route.fulfill({ status: 503, contentType: 'application/json', body: '{"success":false}' });
+      },
+    });
+    await page.goto('/index.html');
+
+    await page.locator('#chat-fab').click();
+    await expect(page.locator('#chat-panel')).toBeVisible();
+    await page.locator('#chat-input').fill('เช็กอินกี่โมง');
+    await page.locator('#chat-send').click();
+
+    await expect(page.locator('#chat-log')).toContainText('เช็กอินได้ตั้งแต่ 14:00 น. ค่ะ');
+    expect(JSON.stringify(asked)).toContain('เช็กอินกี่โมง');
+
+    expectNoPageErrors(errors);
+  });
 });
