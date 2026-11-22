@@ -7,6 +7,8 @@
   <!-- CONFIG: URL ของ n8n, LIFF_ID และ LINE_OA_BASIC_ID อยู่ใน config.js (ใช้ร่วมกับ admin.html)
        รูปภาพ ข้อมูลโรงแรม ราคา และห้องพัก แก้ใน Google Sheets (ชีต Config / RoomTypes) ไม่ต้องแก้ไฟล์นี้ -->
   <script src="config.js"></script>
+  <!-- รูปตัวอย่าง (Unsplash) ใช้เมื่อชีตยังไม่มีรูป ดู demo-images.js / IMAGE_CREDITS.md -->
+  <script src="demo-images.js"></script>
   <script>
     const { N8N_BASE_URL = 'YOUR_N8N_BASE_URL', LIFF_ID = 'YOUR_LIFF_ID', LINE_OA_BASIC_ID = 'YOUR_LINE_OA_BASIC_ID' } = window.SAI_LAN_CONFIG || {};
   </script>
@@ -754,10 +756,29 @@
     state.loading = false;
     const first = !state.hotel;
     state.hotel = data.hotel; state.rating = data.rating; state.rooms = data.rooms || []; state.search = data.search; state.promo = data.promo;
+    applyDemoImages();
     if (first) renderHotel();
     renderRooms(); renderPromo(); renderAside();
     if (state.view === 'checkout') renderCheckout();
     return data;
+  }
+
+  // รูปตัวอย่างจาก demo-images.js: เติมให้เฉพาะส่วนที่ชีตยังไม่มีรูป (ชีตชนะเสมอ)
+  function applyDemoImages() {
+    const demo = window.SAI_LAN_DEMO_IMAGES;
+    if (!demo) return;
+    if (state.hotel && !(state.hotel.gallery || []).length && (demo.gallery || []).length) state.hotel.gallery = [...demo.gallery];
+    // ห้องที่ room_type ไม่ตรงกับ key ใน demo-images.js จะได้ชุดรูปที่ยังไม่ถูกใช้ไล่ตามลำดับ
+    const sets = Object.values(demo.rooms || {}).filter((a) => a?.length);
+    const used = new Set();
+    const pending = [];
+    for (const r of state.rooms) {
+      if ((r.images || []).length) continue;
+      const imgs = demo.rooms?.[String(r.room_type || '').trim().toLowerCase()];
+      if (imgs?.length) { r.images = [...imgs]; used.add(imgs); } else pending.push(r);
+    }
+    const free = [...sets.filter((a) => !used.has(a)), ...sets];
+    pending.forEach((r, i) => { if (free.length) r.images = [...free[i % free.length]]; });
   }
 
   /* =========================================================
