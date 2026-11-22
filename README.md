@@ -170,6 +170,7 @@
 | **E** | Re-booking | Cron 10:00 | - | - | ส่งข้อเสนอส่วนตัว (ใช้ tags จาก D) |
 | **F** | Daily Ops | Cron 09:00 | - | - | Welcome แขก + Digest แม่บ้าน |
 | **S** | Staff API | Webhook GET/POST | Staff Key | พนักงาน | เช็กอิน/เอาต์, แก้ห้อง, ส่ง push |
+| **G** | AI Concierge | Webhook POST | none (CORS) | แขก (LINE + เว็บ) | 🤖 แชทบอท Gemini ตอบคำถามจากข้อมูลในชีต · [คู่มือ](คู่มือติดตั้ง%20AI%20Chatbot.md) |
 
 ---
 
@@ -366,6 +367,16 @@
 | **Output ใช้ที่ไหน** | เก็บใน Sheets → Workflow E อ่านไปทำดีลส่วนตัว |
 | **ค่าใช้จ่าย** | ~0 บาท (Free tier) |
 
+### 🤖 จุดที่ 2 — Workflow G: AI Chatbot (น้องใส)
+
+แขกพิมพ์คำถามอิสระใน LINE OA หรือในหน้าเว็บ (ปุ่ม "ถามน้องใส") → G อ่านชีต Config · RoomTypes · Rooms · FAQ ล่าสุด → แนบเป็น "คลังความรู้" ให้ Gemini → ตอบเป็น JSON `{answer, handoff}`
+
+- ตอบจากข้อมูลในชีตเท่านั้น ไม่มีข้อมูล = บอกว่าไม่ทราบ + ส่งต่อพนักงาน (แจ้งกลุ่มพนักงานใน LINE)
+- ไม่ส่งรหัส WiFi / ข้อมูลแขกคนอื่นให้ AI · โควตาเต็มมีข้อความสำรอง
+- ปุ่มเมนู LINE เดิมยังตอบแบบกฎตายตัวเหมือนเดิม
+
+ดูวิธีติดตั้งที่ [คู่มือติดตั้ง AI Chatbot](คู่มือติดตั้ง%20AI%20Chatbot.md)
+
 ---
 
 ## 10. ฐานข้อมูล Google Sheets
@@ -382,6 +393,7 @@
 | 6 | **Messages** | B, D | ทุกข้อความ LINE ที่เข้า-ออก |
 | 7 | **Offers** | E | ดีลส่วนตัวที่ส่ง (status: pending/claimed/expired) |
 | 8 | **ActivityLog** | A, B, F, S | Audit log ทุก action |
+| 9 | **FAQ** | G | คำถามที่พบบ่อยที่พนักงานเขียนเอง (question, answer, category, active) ให้ AI ใช้ตอบ |
 
 ### หลักการ
 - พนักงานเปิด Sheets แก้ไขได้ทันที
