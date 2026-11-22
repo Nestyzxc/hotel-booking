@@ -477,7 +477,7 @@ TIMEZONE=Asia/Bangkok
 
 ### 🔜 v2.1 (Q4 2026)
 - รองรับ Messenger / Telegram (ขยายช่องทาง)
-- Dashboard real-time ใน admin.html
+- ✅ Dashboard real-time ใน admin.html (อัปเดตสดทุก 20 วินาที ไม่ต้องรีโหลด)
 - ส่งออกรายงาน PDF รายเดือน
 
 ### 🔮 v3.0 (2027)
